@@ -1,491 +1,488 @@
-c! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-c! Extracting routine igrf12syn subroutine: GPSPPP : beg
-c! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-c!       PROGRAM IGRF12
-c! C
-c! C     This is a program for synthesising geomagnetic field values from the 
-c! C     International Geomagnetic Reference Field series of models as agreed
-c! c     in December 2014 by IAGA Working Group V-MOD. 
-c! C     It is the 12th generation IGRF, ie the 11th revision. 
-c! C     The main-field models for 1900.0, 1905.0,..1940.0 and 2015.0 are 
-c! C     non-definitive, those for 1945.0, 1950.0,...2010.0 are definitive and
-c! C     the secular-variation model for 2015.0 to 2020.0 is non-definitive.
-c! C
-c! C     Main-field models are to degree and order 10 (ie 120 coefficients)
-c! C     for 1900.0-1995.0 and to 13 (ie 195 coefficients) for 2000.0 onwards. 
-c! C     The predictive secular-variation model is to degree and order 8 (ie 80
-c! C     coefficients).
-c! C
-c! C     Options include values at different locations at different
-c! C     times (spot), values at same location at one year intervals
-c! C     (time series), grid of values at one time (grid); geodetic or
-c! C     geocentric coordinates, latitude & longitude entered as decimal
-c! C     degrees or degrees & minutes (not in grid), choice of main field 
-c! C     or secular variation or both (grid only).
-c! C Recent history of code:
-c! c     Aug 2003: 
-c! c     Adapted from 8th generation version to include new maximum degree for
-c! c     main-field models for 2000.0 and onwards and use WGS84 spheroid instead
-c! c     of International Astronomical Union 1966 spheroid as recommended by IAGA
-c! c     in July 2003. Reference radius remains as 6371.2 km - it is NOT the mean
-c! c     radius (= 6371.0 km) but 6371.2 km is what is used in determining the
-c! c     coefficients. 
-c! c     Dec 2004: 
-c! c     Adapted for 10th generation
-c! c     Jul 2005: 
-c! c     1995.0 coefficients as published in igrf9coeffs.xls and igrf10coeffs.xls
-c! c     now used in code - (Kimmo Korhonen spotted 1 nT difference in 11 coefficients)
-c! c     Dec 2009:
-c! c     Adapted for 11th generation
-c! c     Dec 2014:
-c! c     Adapted for 12th generation
-c! c
-c!       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-c!       CHARACTER*1 IA
-c!       CHARACTER*11 TYPE
-c!       CHARACTER*20 NAME
-c!       CHARACTER*30 FNM
-c!       DATA DTMN,DTMX/1900.0,2025.0/
-c! C
-c! C
-c!       WRITE(6,*)
-c!       WRITE(6,*)'******************************************************'
-c!       WRITE(6,*)'*              IGRF SYNTHESIS PROGRAM                *'
-c!       WRITE(6,*)'*                                                    *'
-c!       WRITE(6,*)'* A program for the computation of geomagnetic       *'
-c!       WRITE(6,*)'* field elements from the International Geomagnetic  *'
-c!       WRITE(6,*)'* Reference Field (12th generation) as revised in    *'
-c!       WRITE(6,*)'* December 2014 by the IAGA Working Group V-MOD.     *'
-c!       WRITE(6,*)'*                                                    *'
-c!       WRITE(6,*)'* It is valid for dates from 1900.0 to 2020.0,       *'
-c!       WRITE(6,*)'* values up to 2025.0 will be computed but with      *'
-c!       WRITE(6,*)'* reduced accuracy. Values for dates before 1945.0   *'
-c!       WRITE(6,*)'* and after 2010.0 are non-definitive, otherwise the *'
-c!       WRITE(6,*)'* values are definitive.                             *'
-c!       WRITE(6,*)'*                                                    *'
-c!       WRITE(6,*)'* Susan Macmillan          British Geological Survey *'
-c!       WRITE(6,*)'*                           IAGA Working Group V-MOD *'
-c!       WRITE(6,*)'******************************************************'
-c!       WRITE(6,*)
-c!       WRITE(6,*)'Enter name of output file (30 characters maximum)'
-c!       WRITE(6,*)'or press "Return" for output to screen'
-c!       READ (5,991) FNM
-c!   991 FORMAT (A30)
-c!       IF (ICHAR(FNM(1:1)).EQ.32) THEN
-c!        IU = 6
-c!       ELSE
-c!        IU = 2
-c!        OPEN (UNIT = IU,FILE = FNM,STATUS = 'NEW')
-c!       END IF
-c!       FACT = 180.0/3.141592654
-c!       NCOUNT = 0
-c! C
-c!    10 WRITE(6,*)'Enter value for coordinate system:'
-c!       WRITE(6,*)
-c!      1'1 - geodetic (shape of Earth is approximated by a spheroid)'
-c!       WRITE(6,*)
-c!      1'2 - geocentric (shape of Earth is approximated by a sphere)'
-c!       READ (5,*) ITYPE
-c!       IF (ITYPE.LT.1.OR.ITYPE.GT.2) GO TO 10
-c!       IF (ITYPE.EQ.1) TYPE = ' geodetic  '
-c!       IF (ITYPE.EQ.2) TYPE = ' geocentric'
-c! C
-c!    20 WRITE(6,*) 'Choose an option:'
-c!       WRITE(6,*) '1 - values at one or more locations & dates'
-c!       WRITE(6,*) '2 - values at yearly intervals at one location'
-c!       WRITE(6,*) '3 - values on a latitude/longitude grid at one date'
-c!       READ (5,*) IOPT
-c!       IF(IOPT.LT.1.OR.IOPT.GT.3) GO TO 20
-c!       IF (IOPT.EQ.3) GO TO 150
-c! C
-c!    30 WRITE(6,*)'Enter value for format of latitudes and longitudes:'
-c!       WRITE(6,*)'1 - in degrees & minutes'
-c!       WRITE(6,*)'2 - in decimal degrees'
-c!       READ (5,*) IDM
-c!       IF (IDM.LT.1.OR.IDM.GT.2) GO TO 30
-c!       IF (NCOUNT.EQ.0) GOTO 50
-c! C
-c!    40 WRITE(6,*) 
-c!      1'Do you want values for another date & position? (y/n)'
-c!       READ (5,'(A1)') IA    
-c!       IF (IA.NE.'Y'.AND.IA.NE.'y'.AND.IA.NE.'N'.AND.IA.NE.'n')
-c!      1     GO TO 40
-c!       IF(IA.EQ.'N'.OR.IA.EQ.'n') THEN
-c!        WRITE(IU,928)
-c!   928  FORMAT (' D is declination (+ve east)'/
-c!      1          ' I is inclination (+ve down)'/
-c!      2          ' H is horizontal intensity'/
-c!      3          ' X is north component'/
-c!      4          ' Y is east component'/
-c!      5          ' Z is vertical component (+ve down)'/
-c!      6          ' F is total intensity')
-c!        WRITE(IU,929)
-c!   929  FORMAT (/' SV is secular variation (annual rate of change)')
-c!        IF (ITYPE.EQ.2) THEN
-c!         WRITE(IU,*)
-c!      1'These elements are relative to the geocentric coordinate system'
-c!        ELSE
-c!         WRITE(IU,*)
-c!        ENDIF
-c!        STOP
-c!       ENDIF
-c! C
-c!    50 NCOUNT = 1
-c!       IF (IOPT.NE.2) THEN
-c!        WRITE(6,*) 'Enter date in years A.D.'
-c!        READ (5,*) DATE
-c!        IF (DATE.LT.DTMN.OR.DATE.GT.DTMX) GO TO 209
-c!       ENDIF
-c! 
-c!       IF(ITYPE.EQ.1) THEN
-c!        WRITE(6,*) 'Enter altitude in km'
-c!       ELSE  
-c!        WRITE(6,*) 'Enter radial distance in km (>3485 km)'
-c!       END IF
-c!       READ (5,*) ALT
-c!       IF (ITYPE.EQ.2.AND.ALT.LE.3485.0) GO TO 210
-c! C
-c!       IF (IDM.EQ.1) THEN
-c!        WRITE(6,*) 'Enter latitude & longitude in degrees & minutes'
-c!        WRITE(6,*) '(if either latitude or longitude is between -1'
-c!        WRITE(6,*) 'and 0 degrees, enter the minutes as negative).'
-c!        WRITE(6,*) 'Enter 4 integers' 
-c!        READ (5,*) LTD,LTM,LND,LNM
-c!        IF (LTD.LT.-90.OR.LTD.GT.90.OR.LTM.LE.-60.OR.LTM.GE.60) GO TO 204
-c!        IF (LND.LT.-360.OR.LND.GT.360.OR.LNM.LE.-60.OR.LNM.GE.60)
-c!      1    GO TO 205
-c!        IF (LTM.LT.0.AND.LTD.NE.0) GO TO 204
-c!        IF (LNM.LT.0.AND.LND.NE.0) GO TO 205
-c!        CALL DMDDEC (LTD,LTM,XLT)
-c!        CALL DMDDEC (LND,LNM,XLN)
-c!       ELSE
-c!        WRITE(6,*) 'Enter latitude & longitude in decimal degrees'
-c!        READ (5,*) XLT,XLN
-c!        IF (XLT.LT.-90.0.OR.XLT.GT.90.0) GO TO 202
-c!        IF (XLN.LT.-360.0.OR.XLN.GT.360.0) GO TO 203
-c!       ENDIF
-c! C
-c!       WRITE(*,*) 'Enter place name (20 characters maximum)'
-c!       READ (*,'(A)') NAME
-c!       CLT = 90.0 - XLT
-c!       IF (CLT.LT.0.0.OR.CLT.GT.180.0) GO TO 204
-c!       IF (XLN.LE.-360.0.OR.XLN.GE.360.0) GO TO 205
-c!       IF (IOPT.EQ.2) GOTO 60
-c! C
-c!       CALL IGRF12SYN (0,DATE,ITYPE,ALT,CLT,XLN,X,Y,Z,F)
-c!       D = FACT*ATAN2(Y,X)
-c!       H = SQRT(X*X + Y*Y)
-c!       S = FACT*ATAN2(Z,H)
-c!       CALL DDECDM (D,IDEC,IDECM)
-c!       CALL DDECDM (S,INC,INCM)
-c! C
-c!       CALL IGRF12SYN (1,DATE,ITYPE,ALT,CLT,XLN,DX,DY,DZ,F1)
-c!       DD = (60.0*FACT*(X*DY - Y*DX))/(H*H)
-c!       DH = (X*DX + Y*DY)/H
-c!       DS = (60.0*FACT*(H*DZ - Z*DH))/(F*F)
-c!       DF = (H*DH + Z*DZ)/F
-c! C
-c!       IF (IDM.EQ.1) THEN
-c!        WRITE(IU,930) DATE,LTD,LTM,TYPE,LND,LNM,ALT,NAME
-c!   930  FORMAT (1X,F8.3,' Lat',2I4,A11,' Long ',2I4,F10.3,' km ',A20)
-c!       ELSE
-c!        WRITE(IU,931) DATE,XLT,TYPE,XLN,ALT,NAME
-c!   931  FORMAT (1X,F8.3,' Lat',F8.3,A11,' Long ',F8.3,F10.3,' km ',A20)
-c!       ENDIF
-c! C
-c!       IDD = NINT(DD)
-c!       WRITE(IU,937) IDEC,IDECM,IDD
-c!   937 FORMAT (15X,'D =',I5,' deg',I4,' min',4X,'SV =',I8,' min/yr')
-c! C
-c!       IDS = NINT(DS)
-c!       WRITE(IU,939) INC,INCM,IDS
-c!   939 FORMAT (15X,'I =',I5,' deg',I4,' min',4X,'SV =',I8,' min/yr')
-c! C
-c!       IH = NINT(H)
-c!       IDH = NINT(DH)
-c!       WRITE(IU,941) IH,IDH
-c!   941 FORMAT (15X,'H =',I8,' nT     ',5X,'SV =',I8,' nT/yr')
-c! C
-c!       IX = NINT(X)
-c!       IDX = NINT(DX)
-c!       WRITE(IU,943) IX,IDX
-c!   943 FORMAT (15X,'X =',I8,' nT     ',5X,'SV =',I8,' nT/yr')
-c! C
-c!       IY = NINT(Y)
-c!       IDY = NINT(DY)
-c!       WRITE(IU,945) IY,IDY
-c!   945 FORMAT (15X,'Y =',I8,' nT     ',5X,'SV =',I8,' nT/yr')
-c! C
-c!       IZ = NINT(Z)
-c!       IDZ = NINT(DZ)
-c!       WRITE(IU,947) IZ,IDZ
-c!   947 FORMAT (15X,'Z =',I8,' nT     ',5X,'SV =',I8,' nT/yr')
-c! C
-c!       NF = NINT(F)
-c!       IDF = NINT(DF)
-c!       WRITE(IU,949) NF,IDF
-c!   949 FORMAT (15X,'F =',I8,' nT     ',5X,'SV =',I8,' nT/yr'/)
-c! C
-c!       GO TO 40
-c! C
-c!    60 CONTINUE
-c! C
-c! C     SERIES OF VALUES AT ONE LOCATION...
-c! C
-c!       IF (IDM.EQ.1) THEN
-c!        WRITE(IU,932) LTD,LTM,TYPE,LND,LNM,ALT,NAME
-c!   932  FORMAT ('Lat',2I4,A11,'  Long ',2I4,F10.3,' km ',A20)
-c!       ELSE
-c!        WRITE(IU,933) XLT,TYPE,XLN,ALT,NAME
-c!   933  FORMAT ('Lat',F8.3,A11,'  Long ',F8.3,F10.3,' km ',A20)
-c!       ENDIF
-c!       WRITE (IU,934)
-c!   934 FORMAT (3X,'DATE',7X,'D',3X,'SV',6X,'I',2X,'SV',6X,'H',4X,'SV',
-c!      17X,'X',4X,'SV',7X,'Y',4X,'SV',7X,'Z',4X,'SV',6X,'F',4X,'SV')
-c!       IMX = DTMX - DTMN - 5
-c!       DO 70 I = 1,IMX
-c!       DATE = DTMN - 0.5 + I
-c!       CALL IGRF12SYN (0,DATE,ITYPE,ALT,CLT,XLN,X,Y,Z,F)
-c!       D = FACT*ATAN2(Y,X)
-c!       H = SQRT(X*X + Y*Y)
-c!       S = FACT*ATAN2(Z,H)
-c!       IH = NINT(H)
-c!       IX = NINT(X)
-c!       IY = NINT(Y)
-c!       IZ = NINT(Z)
-c!       NF = NINT(F)
-c! C
-c!       CALL IGRF12SYN (1,DATE,ITYPE,ALT,CLT,XLN,DX,DY,DZ,F1)
-c!       DD = (60.0*FACT*(X*DY - Y*DX))/(H*H)
-c!       DH = (X*DX + Y*DY)/H
-c!       DS = (60.0*FACT*(H*DZ - Z*DH))/(F*F)
-c!       DF = (H*DH + Z*DZ)/F
-c!       IDD = NINT(DD)
-c!       IDH = NINT(DH)
-c!       IDS = NINT(DS)
-c!       IDX = NINT(DX)
-c!       IDY = NINT(DY)
-c!       IDZ = NINT(DZ)
-c!       IDF = NINT(DF)
-c! C
-c!       WRITE(IU,935)
-c!      1   DATE,D,IDD,S,IDS,IH,IDH,IX,IDX,IY,IDY,IZ,IDZ,NF,IDF
-c!   935 FORMAT(1X,F6.1,F8.2,I5,F7.2,I4,I7,I6,3(I8,I6),I7,I6)
-c!    70 CONTINUE
-c!       IFL = 2
-c!       GOTO 158
-c! C
-c! C     GRID OF VALUES...
-c! C
-c!   150 WRITE(6,*)'Enter value for MF/SV flag:'
-c!       WRITE(6,*)'0 for main field (MF)'
-c!       WRITE(6,*)'1 for secular variation (SV)'
-c!       WRITE(6,*)'2 for both'
-c!       WRITE(6,*)'9 to quit'
-c!       READ (5,*) IFL
-c!       IF (IFL.EQ.9) STOP
-c!       IF (IFL.NE.0.AND.IFL.NE.1.AND.IFL.NE.2) GOTO 150
-c! C
-c!       WRITE(6,*) 'Enter initial value, final value & increment or'
-c!       WRITE(6,*) 'decrement of latitude, in degrees & decimals'
-c!       READ (5,*) XLTI,XLTF,XLTD
-c!       LTI = NINT(1000.0*XLTI)
-c!       LTF = NINT(1000.0*XLTF)
-c!       LTD = NINT(1000.0*XLTD)
-c!       WRITE(6,*) 'Enter initial value, final value & increment or'
-c!       WRITE(6,*) 'decrement of longitude, in degrees & decimals'
-c!       READ (5,*) XLNI,XLNF,XLND
-c!       LNI = NINT(1000.0*XLNI)
-c!       LNF = NINT(1000.0*XLNF)
-c!       LND = NINT(1000.0*XLND)
-c!       IF (LTI.LT.-90000.OR.LTI.GT.90000) GO TO 206
-c!       IF (LTF.LT.-90000.OR.LTF.GT.90000) GO TO 206
-c!       IF (LNI.LT.-360000.OR.LNI.GT.360000) GO TO 207
-c!       IF (LNF.LT.-360000.OR.LNF.GT.360000) GO TO 207
-c!    98 WRITE(6,*) 'Enter date in years A.D.'
-c!       READ (5,*) DATE
-c!       IF (DATE.LT.DTMN.OR.DATE.GT.DTMX) GO TO 209
-c!       IF (ITYPE.EQ.1) THEN
-c!        WRITE(6,*) 'Enter altitude in km'
-c!       ELSE
-c!        WRITE(6,*) 'Enter radial distance in km (>3485 km)'
-c!       END IF
-c!       READ (5,*) ALT
-c!       IF (ITYPE.EQ.2.AND.ALT.LE.3485.0) GO TO 210
-c!       WRITE(IU,958) DATE,ALT,TYPE
-c!   958 FORMAT (' Date =',F9.3,5X,'Altitude =',F10.3,' km',5X,A11//
-c!      1        '      Lat     Long',7X,'D',7X,'I',7X,'H',7X,'X',7X,'Y',
-c!      2        7X,'Z',7X,'F')
-c! C
-c!       LT = LTI
-c!   151 XLT = LT
-c!       XLT = 0.001*XLT
-c!       CLT = 90.0 - XLT
-c!       IF (CLT.LT.-0.001.OR.CLT.GT.180.001) GO TO 202
-c!       LN = LNI
-c!   152 XLN = LN
-c!       XLN = 0.001*XLN
-c!       IF (XLN.LE.-360.0) XLN = XLN + 360.0
-c!       IF (XLN.GE.360.0) XLN = XLN - 360.0
-c!       CALL IGRF12SYN (0,DATE,ITYPE,ALT,CLT,XLN,X,Y,Z,F)
-c!       D = FACT*ATAN2(Y,X)
-c!       H = SQRT(X*X + Y*Y)
-c!       S = FACT*ATAN2(Z,H)
-c!       IH = NINT(H)
-c!       IX = NINT(X)
-c!       IY = NINT(Y)
-c!       IZ = NINT(Z)
-c!       NF = NINT(F)
-c!       IF (IFL.EQ.0) GOTO 153
-c!       CALL IGRF12SYN (1,DATE,ITYPE,ALT,CLT,XLN,DX,DY,DZ,F1)
-c!       IDX = NINT(DX)
-c!       IDY = NINT(DY)
-c!       IDZ = NINT(DZ)
-c!       DD = (60.0*FACT*(X*DY - Y*DX))/(H*H)
-c!       IDD = NINT(DD)
-c!       DH = (X*DX + Y*DY)/H
-c!       IDH = NINT(DH)
-c!       DS = (60.0*FACT*(H*DZ - Z*DH))/(F*F)
-c!       IDS = NINT(DS)
-c!       DF = (H*DH + Z*DZ)/F
-c!       IDF = NINT(DF)
-c! C
-c!   153 CONTINUE
-c!       IF (IFL.EQ.0) WRITE(IU,959) XLT,XLN,D,S,IH,IX,IY,IZ,NF
-c!       IF (IFL.EQ.1) WRITE(IU,960) XLT,XLN,IDD,IDS,IDH,IDX,IDY,IDZ,IDF
-c!       IF (IFL.EQ.2) THEN
-c!        WRITE(IU,959) XLT,XLN,D,S,IH,IX,IY,IZ,NF
-c!        WRITE(IU,961) IDD,IDS,IDH,IDX,IDY,IDZ,IDF
-c!       ENDIF      
-c!   959 FORMAT (2F9.3,2F8.2,5I8)
-c!   960 FORMAT (2F9.3,7I8)
-c!   961 FORMAT (14X,'SV: ',7I8)
-c! C
-c!   154 LN = LN + LND
-c!       IF (LND.LT.0) GO TO 156
-c!       IF (LN.LE.LNF) GO TO 152
-c!   155 LT = LT + LTD
-c!       IF (LTD.LT.0) GO TO 157
-c!       IF (LT - LTF) 151,151,158
-c!   156 IF (LN - LNF) 155,152,152
-c!   157 IF (LT.GE.LTF) GO TO 151
-c!   158 CONTINUE
-c!       IF (IFL.EQ.0.OR.IFL.EQ.2) THEN
-c!        WRITE(IU,962)
-c!   962  FORMAT (/' D is declination in degrees (+ve east)'/
-c!      1          ' I is inclination in degrees (+ve down)'/
-c!      2          ' H is horizontal intensity in nT'/
-c!      3          ' X is north component in nT'/
-c!      4          ' Y is east component in nT'/
-c!      5          ' Z is vertical component in nT (+ve down)'/
-c!      6          ' F is total intensity in nT')
-c!       IF (IFL.NE.0) WRITE(IU,963)
-c!   963  FORMAT (' SV is secular variation (annual rate of change)'/
-c!      1' Units for SV: minutes/yr (D & I); nT/yr (H,X,Y,Z & F)')
-c!       IF (ITYPE.EQ.2) WRITE(IU,*)
-c!      1'These elements are relative to the geocentric coordinate system'
-c!       ELSE
-c!        WRITE(IU,964)
-c!   964  FORMAT (/' D is SV in declination in minutes/yr (+ve east)'/
-c!      1          ' I is SV in inclination in minutes/yr (+ve down)'/
-c!      2          ' H is SV in horizontal intensity in nT/yr'/
-c!      3          ' X is SV in north component in nT/yr'/
-c!      4          ' Y is SV in east component in nT/yr'/
-c!      5          ' Z is SV in vertical component in nT/yr (+ve down)'/
-c!      6          ' F is SV in total intensity in nT/yr')
-c!       IF (ITYPE.EQ.2) WRITE(IU,*)
-c!      1'These elements are relative to the geocentric coordinate system'
-c!       ENDIF
-c!   159 STOP
-c! C
-c!   209 WRITE(6,972) DATE
-c!   972 FORMAT (' ***** Error *****'/' DATE =',F9.3,
-c!      1        ' - out of range')
-c!       STOP
-c! C
-c!   210 WRITE(6,973) ALT,ITYPE
-c!   973 FORMAT (' ***** Error *****'/' A value of ALT =',F10.3,
-c!      1        ' is not allowed when ITYPE =',I2)
-c!       STOP
-c! C
-c!   202 WRITE(6,966) XLT
-c!   966 FORMAT (' ***** Error *****'/' XLT =',F9.3,
-c!      1        ' - out of range')
-c!       STOP
-c! C
-c!   203 WRITE(6,967) XLN
-c!   967 FORMAT (' ***** Error *****'/' XLN =',F10.3,
-c!      1        ' - out of range')
-c!       STOP
-c! C
-c!   204 WRITE(6,968) LTD,LTM
-c!   968 FORMAT (' ***** Error *****'/' Latitude out of range',
-c!      1        ' - LTD =',I6,5X,'LTM =',I4)
-c!       STOP
-c! C
-c!   205 WRITE(6,969) LND,LNM
-c!   969 FORMAT (' ***** Error *****'/' Longitude out of range',
-c!      1        ' - LND =',I8,5X,'LNM =',I4)
-c!       STOP
-c! C
-c!   206 WRITE(6,970) LTI,LTF
-c!   970 FORMAT (' ***** Error *****'/
-c!      1        ' Latitude limits of table out of range - LTI =',
-c!      2        I6,5X,' LTF =',I6)
-c!       STOP
-c! C
-c!   207 WRITE(6,971) LNI,LNF
-c!   971 FORMAT (' ***** Error *****'/
-c!      1        ' Longitude limits of table out of range - LNI =',
-c!      2        I8,5X,' LNF =',I8)
-c!       STOP
-c! C
-c!       END
-c! C
-c!       SUBROUTINE DMDDEC (I,M,X)
-c!       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-c!       DE = I
-c!       EM = M
-c!       IF (I.LT.0) EM = -EM
-c!       X = DE + EM/60.0
-c!       RETURN
-c!       END
-c! C
-c!       SUBROUTINE DDECDM (X,I,M)
-c!       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-c!       SIG = SIGN(1.1D0,X)
-c!       DR = ABS(X)
-c!       I = INT(DR)
-c!       T = I
-c!       M = NINT(60.*(DR - T))
-c!       IF (M.EQ.60) THEN
-c!        M = 0
-c!        I = I + 1
-c!       ENDIF
-c!       ISIG = INT(SIG)
-c!       IF (I.NE.0) THEN
-c!        I = I * ISIG
-c!       ELSE
-c!        IF (M.NE.0) M = M * ISIG
-c!       ENDIF
-c!       RETURN
-c!       END
-c! 
-c! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-c! Extracting routine igrf12syn subroutine: GPSPPP : end
-c! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      subroutine igrf12syn (isv,date,itype,alt,colat,elong,x,y,z,f)
+      PROGRAM IGRF13
+C
+C     This is a program for synthesising geomagnetic field values from the 
+C     International Geomagnetic Reference Field series of models as agreed
+c     in December 2019 by IAGA Working Group V-MOD. 
+C     It is the 13th generation IGRF, ie the 12th revision. 
+C     The main-field models for 1900.0, 1905.0,..1940.0 and 2020.0 are 
+C     non-definitive, those for 1945.0, 1950.0,...2015.0 are definitive and
+C     the secular-variation model for 2020.0 to 2025.0 is non-definitive.
+C
+C     Main-field models are to degree and order 10 (ie 120 coefficients)
+C     for 1900.0-1995.0 and to 13 (ie 195 coefficients) for 2000.0 onwards. 
+C     The predictive secular-variation model is to degree and order 8 (ie 80
+C     coefficients).
+C
+C     Options include values at different locations at different
+C     times (spot), values at same location at one year intervals
+C     (time series), grid of values at one time (grid); geodetic or
+C     geocentric coordinates, latitude & longitude entered as decimal
+C     degrees or degrees & minutes (not in grid), choice of main field 
+C     or secular variation or both (grid only).
+C Recent history of code:
+c     Aug 2003: 
+c     Adapted from 8th generation version to include new maximum degree for
+c     main-field models for 2000.0 and onwards and use WGS84 spheroid instead
+c     of International Astronomical Union 1966 spheroid as recommended by IAGA
+c     in July 2003. Reference radius remains as 6371.2 km - it is NOT the mean
+c     radius (= 6371.0 km) but 6371.2 km is what is used in determining the
+c     coefficients. 
+c     Dec 2004: 
+c     Adapted for 10th generation
+c     Jul 2005: 
+c     1995.0 coefficients as published in igrf9coeffs.xls and igrf10coeffs.xls
+c     now used in code - (Kimmo Korhonen spotted 1 nT difference in 11 coefficients)
+c     Dec 2009:
+c     Adapted for 11th generation
+c     Dec 2014:
+c     Adapted for 12th generation
+c     Dec 2019 (W. Brown, BGS):
+c     Adapted for 13th generation
 c
-c     This is a synthesis routine for the 12th generation IGRF as agreed 
-c     in December 2014 by IAGA Working Group V-MOD. It is valid 1900.0 to
-c     2020.0 inclusive. Values for dates from 1945.0 to 2010.0 inclusive are 
+      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      CHARACTER*1 IA
+      CHARACTER*11 TYPE
+      CHARACTER*20 NAME
+      CHARACTER*30 FNM
+      DATA DTMN,DTMX/1900.0,2030.0/
+C
+C
+      WRITE(6,*)
+      WRITE(6,*)'******************************************************'
+      WRITE(6,*)'*              IGRF SYNTHESIS PROGRAM                *'
+      WRITE(6,*)'*                                                    *'
+      WRITE(6,*)'* A program for the computation of geomagnetic       *'
+      WRITE(6,*)'* field elements from the International Geomagnetic  *'
+      WRITE(6,*)'* Reference Field (13th generation) as revised in    *'
+      WRITE(6,*)'* December 2019 by the IAGA Working Group V-MOD.     *'
+      WRITE(6,*)'*                                                    *'
+      WRITE(6,*)'* It is valid for dates from 1900.0 to 2025.0,       *'
+      WRITE(6,*)'* values up to 2030.0 will be computed but with      *'
+      WRITE(6,*)'* reduced accuracy. Values for dates before 1945.0   *'
+      WRITE(6,*)'* and after 2015.0 are non-definitive, otherwise the *'
+      WRITE(6,*)'* values are definitive.                             *'
+      WRITE(6,*)'*                                                    *'
+      WRITE(6,*)'* Susan Macmillan, William Brown                     *'
+      WRITE(6,*)'*                          British Geological Survey *'
+      WRITE(6,*)'*                           IAGA Working Group V-MOD *'
+      WRITE(6,*)'******************************************************'
+      WRITE(6,*)
+      WRITE(6,*)'Enter name of output file (30 characters maximum)'
+      WRITE(6,*)'or press "Return" for output to screen'
+      READ (5,991) FNM
+  991 FORMAT (A30)
+      IF (ICHAR(FNM(1:1)).EQ.32) THEN
+       IU = 6
+      ELSE
+       IU = 2
+       OPEN (UNIT = IU,FILE = FNM)
+      END IF
+      FACT = 180.0/3.141592654
+      NCOUNT = 0
+C
+   10 WRITE(6,*)'Enter value for coordinate system:'
+      WRITE(6,*)
+     1'1 - geodetic (shape of Earth is approximated by a spheroid)'
+      WRITE(6,*)
+     1'2 - geocentric (shape of Earth is approximated by a sphere)'
+      READ (5,*) ITYPE
+      IF (ITYPE.LT.1.OR.ITYPE.GT.2) GO TO 10
+      IF (ITYPE.EQ.1) TYPE = ' geodetic  '
+      IF (ITYPE.EQ.2) TYPE = ' geocentric'
+C
+   20 WRITE(6,*) 'Choose an option:'
+      WRITE(6,*) '1 - values at one or more locations & dates'
+      WRITE(6,*) '2 - values at yearly intervals at one location'
+      WRITE(6,*) '3 - values on a latitude/longitude grid at one date'
+      READ (5,*) IOPT
+      IF(IOPT.LT.1.OR.IOPT.GT.3) GO TO 20
+      IF (IOPT.EQ.3) GO TO 150
+C
+   30 WRITE(6,*)'Enter value for format of latitudes and longitudes:'
+      WRITE(6,*)'1 - in degrees & minutes'
+      WRITE(6,*)'2 - in decimal degrees'
+      READ (5,*) IDM
+      IF (IDM.LT.1.OR.IDM.GT.2) GO TO 30
+      IF (NCOUNT.EQ.0) GOTO 50
+C
+   40 WRITE(6,*) 
+     1'Do you want values for another date & position? (y/n)'
+      READ (5,'(A1)') IA    
+      IF (IA.NE.'Y'.AND.IA.NE.'y'.AND.IA.NE.'N'.AND.IA.NE.'n')
+     1     GO TO 40
+      IF(IA.EQ.'N'.OR.IA.EQ.'n') THEN
+       WRITE(IU,928)
+  928  FORMAT (' D is declination (+ve east)'/
+     1          ' I is inclination (+ve down)'/
+     2          ' H is horizontal intensity'/
+     3          ' X is north component'/
+     4          ' Y is east component'/
+     5          ' Z is vertical component (+ve down)'/
+     6          ' F is total intensity')
+       WRITE(IU,929)
+  929  FORMAT (/' SV is secular variation (annual rate of change)')
+       IF (ITYPE.EQ.2) THEN
+        WRITE(IU,*)
+     1'These elements are relative to the geocentric coordinate system'
+       ELSE
+        WRITE(IU,*)
+       ENDIF
+       STOP
+      ENDIF
+C
+   50 NCOUNT = 1
+      IF (IOPT.NE.2) THEN
+       WRITE(6,*) 'Enter date in years A.D.'
+       READ (5,*) DATE
+       IF (DATE.LT.DTMN.OR.DATE.GT.DTMX) GO TO 209
+      ENDIF
+
+      IF(ITYPE.EQ.1) THEN
+       WRITE(6,*) 'Enter altitude in km'
+      ELSE  
+       WRITE(6,*) 'Enter radial distance in km (>3485 km)'
+      END IF
+      READ (5,*) ALT
+      IF (ITYPE.EQ.2.AND.ALT.LE.3485.0) GO TO 210
+C
+      IF (IDM.EQ.1) THEN
+       WRITE(6,*) 'Enter latitude & longitude in degrees & minutes'
+       WRITE(6,*) '(if either latitude or longitude is between -1'
+       WRITE(6,*) 'and 0 degrees, enter the minutes as negative).'
+       WRITE(6,*) 'Enter 4 integers' 
+       READ (5,*) LTD,LTM,LND,LNM
+       IF (LTD.LT.-90.OR.LTD.GT.90.OR.LTM.LE.-60.OR.LTM.GE.60) GO TO 204
+       IF (LND.LT.-360.OR.LND.GT.360.OR.LNM.LE.-60.OR.LNM.GE.60)
+     1    GO TO 205
+       IF (LTM.LT.0.AND.LTD.NE.0) GO TO 204
+       IF (LNM.LT.0.AND.LND.NE.0) GO TO 205
+       CALL DMDDEC (LTD,LTM,XLT)
+       CALL DMDDEC (LND,LNM,XLN)
+      ELSE
+       WRITE(6,*) 'Enter latitude & longitude in decimal degrees'
+       READ (5,*) XLT,XLN
+       IF (XLT.LT.-90.0.OR.XLT.GT.90.0) GO TO 202
+       IF (XLN.LT.-360.0.OR.XLN.GT.360.0) GO TO 203
+      ENDIF
+C
+      WRITE(*,*) 'Enter place name (20 characters maximum)'
+      READ (*,'(A)') NAME
+      CLT = 90.0 - XLT
+      IF (CLT.LT.0.0.OR.CLT.GT.180.0) GO TO 204
+      IF (XLN.LE.-360.0.OR.XLN.GE.360.0) GO TO 205
+      IF (IOPT.EQ.2) GOTO 60
+C
+      CALL IGRF13SYN (0,DATE,ITYPE,ALT,CLT,XLN,X,Y,Z,F)
+      D = FACT*ATAN2(Y,X)
+      H = SQRT(X*X + Y*Y)
+      S = FACT*ATAN2(Z,H)
+      CALL DDECDM (D,IDEC,IDECM)
+      CALL DDECDM (S,INC,INCM)
+C
+      CALL IGRF13SYN (1,DATE,ITYPE,ALT,CLT,XLN,DX,DY,DZ,F1)
+      DD = (60.0*FACT*(X*DY - Y*DX))/(H*H)
+      DH = (X*DX + Y*DY)/H
+      DS = (60.0*FACT*(H*DZ - Z*DH))/(F*F)
+      DF = (H*DH + Z*DZ)/F
+C
+      IF (IDM.EQ.1) THEN
+       WRITE(IU,930) DATE,LTD,LTM,TYPE,LND,LNM,ALT,NAME
+  930  FORMAT (1X,F8.3,' Lat',2I4,A11,' Long ',2I4,F10.3,' km ',A20)
+      ELSE
+       WRITE(IU,931) DATE,XLT,TYPE,XLN,ALT,NAME
+  931  FORMAT (1X,F8.3,' Lat',F8.3,A11,' Long ',F8.3,F10.3,' km ',A20)
+      ENDIF
+C
+      IDD = NINT(DD)
+      WRITE(IU,937) IDEC,IDECM,IDD
+  937 FORMAT (15X,'D =',I5,' deg',I4,' min',4X,'SV =',I8,' min/yr')
+C
+      IDS = NINT(DS)
+      WRITE(IU,939) INC,INCM,IDS
+  939 FORMAT (15X,'I =',I5,' deg',I4,' min',4X,'SV =',I8,' min/yr')
+C
+      IH = NINT(H)
+      IDH = NINT(DH)
+      WRITE(IU,941) IH,IDH
+  941 FORMAT (15X,'H =',I8,' nT     ',5X,'SV =',I8,' nT/yr')
+C
+      IX = NINT(X)
+      IDX = NINT(DX)
+      WRITE(IU,943) IX,IDX
+  943 FORMAT (15X,'X =',I8,' nT     ',5X,'SV =',I8,' nT/yr')
+C
+      IY = NINT(Y)
+      IDY = NINT(DY)
+      WRITE(IU,945) IY,IDY
+  945 FORMAT (15X,'Y =',I8,' nT     ',5X,'SV =',I8,' nT/yr')
+C
+      IZ = NINT(Z)
+      IDZ = NINT(DZ)
+      WRITE(IU,947) IZ,IDZ
+  947 FORMAT (15X,'Z =',I8,' nT     ',5X,'SV =',I8,' nT/yr')
+C
+      NF = NINT(F)
+      IDF = NINT(DF)
+      WRITE(IU,949) NF,IDF
+  949 FORMAT (15X,'F =',I8,' nT     ',5X,'SV =',I8,' nT/yr'/)
+C
+      GO TO 40
+C
+   60 CONTINUE
+C
+C     SERIES OF VALUES AT ONE LOCATION...
+C
+      IF (IDM.EQ.1) THEN
+       WRITE(IU,932) LTD,LTM,TYPE,LND,LNM,ALT,NAME
+  932  FORMAT ('Lat',2I4,A11,'  Long ',2I4,F10.3,' km ',A20)
+      ELSE
+       WRITE(IU,933) XLT,TYPE,XLN,ALT,NAME
+  933  FORMAT ('Lat',F8.3,A11,'  Long ',F8.3,F10.3,' km ',A20)
+      ENDIF
+      WRITE (IU,934)
+  934 FORMAT (3X,'DATE',7X,'D',3X,'SV',6X,'I',2X,'SV',6X,'H',4X,'SV',
+     17X,'X',4X,'SV',7X,'Y',4X,'SV',7X,'Z',4X,'SV',6X,'F',4X,'SV')
+      IMX = DTMX - DTMN - 5
+      DO 70 I = 1,IMX
+      DATE = DTMN - 0.5 + I
+      CALL IGRF13SYN (0,DATE,ITYPE,ALT,CLT,XLN,X,Y,Z,F)
+      D = FACT*ATAN2(Y,X)
+      H = SQRT(X*X + Y*Y)
+      S = FACT*ATAN2(Z,H)
+      IH = NINT(H)
+      IX = NINT(X)
+      IY = NINT(Y)
+      IZ = NINT(Z)
+      NF = NINT(F)
+C
+      CALL IGRF13SYN (1,DATE,ITYPE,ALT,CLT,XLN,DX,DY,DZ,F1)
+      DD = (60.0*FACT*(X*DY - Y*DX))/(H*H)
+      DH = (X*DX + Y*DY)/H
+      DS = (60.0*FACT*(H*DZ - Z*DH))/(F*F)
+      DF = (H*DH + Z*DZ)/F
+      IDD = NINT(DD)
+      IDH = NINT(DH)
+      IDS = NINT(DS)
+      IDX = NINT(DX)
+      IDY = NINT(DY)
+      IDZ = NINT(DZ)
+      IDF = NINT(DF)
+C
+      WRITE(IU,935)
+     1   DATE,D,IDD,S,IDS,IH,IDH,IX,IDX,IY,IDY,IZ,IDZ,NF,IDF
+  935 FORMAT(1X,F6.1,F8.2,I6,F7.2,I4,I7,I6,3(I8,I6),I7,I6)
+   70 CONTINUE
+      IFL = 2
+      GOTO 158
+C
+C     GRID OF VALUES...
+C
+  150 WRITE(6,*)'Enter value for MF/SV flag:'
+      WRITE(6,*)'0 for main field (MF)'
+      WRITE(6,*)'1 for secular variation (SV)'
+      WRITE(6,*)'2 for both'
+      WRITE(6,*)'9 to quit'
+      READ (5,*) IFL
+      IF (IFL.EQ.9) STOP
+      IF (IFL.NE.0.AND.IFL.NE.1.AND.IFL.NE.2) GOTO 150
+C
+      WRITE(6,*) 'Enter initial value, final value & increment or'
+      WRITE(6,*) 'decrement of latitude, in degrees & decimals'
+      READ (5,*) XLTI,XLTF,XLTD
+      LTI = NINT(1000.0*XLTI)
+      LTF = NINT(1000.0*XLTF)
+      LTD = NINT(1000.0*XLTD)
+      WRITE(6,*) 'Enter initial value, final value & increment or'
+      WRITE(6,*) 'decrement of longitude, in degrees & decimals'
+      READ (5,*) XLNI,XLNF,XLND
+      LNI = NINT(1000.0*XLNI)
+      LNF = NINT(1000.0*XLNF)
+      LND = NINT(1000.0*XLND)
+      IF (LTI.LT.-90000.OR.LTI.GT.90000) GO TO 206
+      IF (LTF.LT.-90000.OR.LTF.GT.90000) GO TO 206
+      IF (LNI.LT.-360000.OR.LNI.GT.360000) GO TO 207
+      IF (LNF.LT.-360000.OR.LNF.GT.360000) GO TO 207
+   98 WRITE(6,*) 'Enter date in years A.D.'
+      READ (5,*) DATE
+      IF (DATE.LT.DTMN.OR.DATE.GT.DTMX) GO TO 209
+      IF (ITYPE.EQ.1) THEN
+       WRITE(6,*) 'Enter altitude in km'
+      ELSE
+       WRITE(6,*) 'Enter radial distance in km (>3485 km)'
+      END IF
+      READ (5,*) ALT
+      IF (ITYPE.EQ.2.AND.ALT.LE.3485.0) GO TO 210
+      WRITE(IU,958) DATE,ALT,TYPE
+  958 FORMAT (' Date =',F9.3,5X,'Altitude =',F10.3,' km',5X,A11//
+     1        '      Lat     Long',7X,'D',7X,'I',7X,'H',7X,'X',7X,'Y',
+     2        7X,'Z',7X,'F')
+C
+      LT = LTI
+  151 XLT = LT
+      XLT = 0.001*XLT
+      CLT = 90.0 - XLT
+      IF (CLT.LT.-0.001.OR.CLT.GT.180.001) GO TO 202
+      LN = LNI
+  152 XLN = LN
+      XLN = 0.001*XLN
+      IF (XLN.LE.-360.0) XLN = XLN + 360.0
+      IF (XLN.GE.360.0) XLN = XLN - 360.0
+      CALL IGRF13SYN (0,DATE,ITYPE,ALT,CLT,XLN,X,Y,Z,F)
+      D = FACT*ATAN2(Y,X)
+      H = SQRT(X*X + Y*Y)
+      S = FACT*ATAN2(Z,H)
+      IH = NINT(H)
+      IX = NINT(X)
+      IY = NINT(Y)
+      IZ = NINT(Z)
+      NF = NINT(F)
+      IF (IFL.EQ.0) GOTO 153
+      CALL IGRF13SYN (1,DATE,ITYPE,ALT,CLT,XLN,DX,DY,DZ,F1)
+      IDX = NINT(DX)
+      IDY = NINT(DY)
+      IDZ = NINT(DZ)
+      DD = (60.0*FACT*(X*DY - Y*DX))/(H*H)
+      IDD = NINT(DD)
+      DH = (X*DX + Y*DY)/H
+      IDH = NINT(DH)
+      DS = (60.0*FACT*(H*DZ - Z*DH))/(F*F)
+      IDS = NINT(DS)
+      DF = (H*DH + Z*DZ)/F
+      IDF = NINT(DF)
+C
+  153 CONTINUE
+      IF (IFL.EQ.0) WRITE(IU,959) XLT,XLN,D,S,IH,IX,IY,IZ,NF
+      IF (IFL.EQ.1) WRITE(IU,960) XLT,XLN,IDD,IDS,IDH,IDX,IDY,IDZ,IDF
+      IF (IFL.EQ.2) THEN
+       WRITE(IU,959) XLT,XLN,D,S,IH,IX,IY,IZ,NF
+       WRITE(IU,961) IDD,IDS,IDH,IDX,IDY,IDZ,IDF
+      ENDIF      
+  959 FORMAT (2F9.3,2F8.2,5I8)
+  960 FORMAT (2F9.3,7I8)
+  961 FORMAT (14X,'SV: ',7I8)
+C
+  154 LN = LN + LND
+      IF (LND.LT.0) GO TO 156
+      IF (LN.LE.LNF) GO TO 152
+  155 LT = LT + LTD
+      IF (LTD.LT.0) GO TO 157
+      IF (LT - LTF) 151,151,158
+  156 IF (LN - LNF) 155,152,152
+  157 IF (LT.GE.LTF) GO TO 151
+  158 CONTINUE
+      IF (IFL.EQ.0.OR.IFL.EQ.2) THEN
+       WRITE(IU,962)
+  962  FORMAT (/' D is declination in degrees (+ve east)'/
+     1          ' I is inclination in degrees (+ve down)'/
+     2          ' H is horizontal intensity in nT'/
+     3          ' X is north component in nT'/
+     4          ' Y is east component in nT'/
+     5          ' Z is vertical component in nT (+ve down)'/
+     6          ' F is total intensity in nT')
+      IF (IFL.NE.0) WRITE(IU,963)
+  963  FORMAT (' SV is secular variation (annual rate of change)'/
+     1' Units for SV: minutes/yr (D & I); nT/yr (H,X,Y,Z & F)')
+      IF (ITYPE.EQ.2) WRITE(IU,*)
+     1'These elements are relative to the geocentric coordinate system'
+      ELSE
+       WRITE(IU,964)
+  964  FORMAT (/' D is SV in declination in minutes/yr (+ve east)'/
+     1          ' I is SV in inclination in minutes/yr (+ve down)'/
+     2          ' H is SV in horizontal intensity in nT/yr'/
+     3          ' X is SV in north component in nT/yr'/
+     4          ' Y is SV in east component in nT/yr'/
+     5          ' Z is SV in vertical component in nT/yr (+ve down)'/
+     6          ' F is SV in total intensity in nT/yr')
+      IF (ITYPE.EQ.2) WRITE(IU,*)
+     1'These elements are relative to the geocentric coordinate system'
+      ENDIF
+  159 STOP
+C
+  209 WRITE(6,972) DATE
+  972 FORMAT (' ***** Error *****'/' DATE =',F9.3,
+     1        ' - out of range')
+      STOP
+C
+  210 WRITE(6,973) ALT,ITYPE
+  973 FORMAT (' ***** Error *****'/' A value of ALT =',F10.3,
+     1        ' is not allowed when ITYPE =',I2)
+      STOP
+C
+  202 WRITE(6,966) XLT
+  966 FORMAT (' ***** Error *****'/' XLT =',F9.3,
+     1        ' - out of range')
+      STOP
+C
+  203 WRITE(6,967) XLN
+  967 FORMAT (' ***** Error *****'/' XLN =',F10.3,
+     1        ' - out of range')
+      STOP
+C
+  204 WRITE(6,968) LTD,LTM
+  968 FORMAT (' ***** Error *****'/' Latitude out of range',
+     1        ' - LTD =',I6,5X,'LTM =',I4)
+      STOP
+C
+  205 WRITE(6,969) LND,LNM
+  969 FORMAT (' ***** Error *****'/' Longitude out of range',
+     1        ' - LND =',I8,5X,'LNM =',I4)
+      STOP
+C
+  206 WRITE(6,970) LTI,LTF
+  970 FORMAT (' ***** Error *****'/
+     1        ' Latitude limits of table out of range - LTI =',
+     2        I6,5X,' LTF =',I6)
+      STOP
+C
+  207 WRITE(6,971) LNI,LNF
+  971 FORMAT (' ***** Error *****'/
+     1        ' Longitude limits of table out of range - LNI =',
+     2        I8,5X,' LNF =',I8)
+      STOP
+C
+      END
+C
+      SUBROUTINE DMDDEC (I,M,X)
+      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      DE = I
+      EM = M
+      IF (I.LT.0) EM = -EM
+      X = DE + EM/60.0
+      RETURN
+      END
+C
+      SUBROUTINE DDECDM (X,I,M)
+      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      SIG = SIGN(1.1D0,X)
+      DR = ABS(X)
+      I = INT(DR)
+      T = I
+      M = NINT(60.*(DR - T))
+      IF (M.EQ.60) THEN
+       M = 0
+       I = I + 1
+      ENDIF
+      ISIG = INT(SIG)
+      IF (I.NE.0) THEN
+       I = I * ISIG
+      ELSE
+       IF (M.NE.0) M = M * ISIG
+      ENDIF
+      RETURN
+      END
+
+      subroutine igrf13syn (isv,date,itype,alt,colat,elong,x,y,z,f)
+c
+c     This is a synthesis routine for the 13th generation IGRF as agreed 
+c     in December 2019 by IAGA Working Group V-MOD. It is valid 1900.0 to
+c     2025.0 inclusive. Values for dates from 1945.0 to 2015.0 inclusive are 
 c     definitive, otherwise they are non-definitive.
 c   INPUT
 c     isv   = 0 if main-field values are required
 c     isv   = 1 if secular variation values are required
 c     date  = year A.D. Must be greater than or equal to 1900.0 and 
-c             less than or equal to 2025.0. Warning message is given 
-c             for dates greater than 2020.0. Must be double precision.
+c             less than or equal to 2030.0. Warning message is given 
+c             for dates greater than 2025.0. Must be double precision.
 c     itype = 1 if geodetic (spheroid)
 c     itype = 2 if geocentric (sphere)
 c     alt   = height in km above sea level if itype = 1
@@ -508,18 +505,19 @@ c     of International Astronomical Union 1966 spheroid as recommended by IAGA
 c     in July 2003. Reference radius remains as 6371.2 km - it is NOT the mean
 c     radius (= 6371.0 km) but 6371.2 km is what is used in determining the
 c     coefficients. Adaptation by Susan Macmillan, August 2003 (for 
-c     9th generation), December 2004, December 2009 & December 2014.
+c     9th generation), December 2004, December 2009 & December 2014;
+c     by William Brown, December 2019.
 c
 c     Coefficients at 1995.0 incorrectly rounded (rounded up instead of
 c     to even) included as these are the coefficients published in Excel 
 c     spreadsheet July 2005.
 c
       implicit double precision (a-h,o-z)
-      dimension gh(3451),g0(120),g1(120),g2(120),g3(120),g4(120),
+      dimension gh(3645),g0(120),g1(120),g2(120),g3(120),g4(120),
      1          g5(120),g6(120),g7(120),g8(120),g9(120),ga(120),
      2          gb(120),gc(120),gd(120),ge(120),gf(120),gg(120),
      3          gi(120),gj(120),gk(195),gl(195),gm(195),gp(195),
-     4          gq(195),gr(195),
+     4          gq(195),gr(195),gs(195),
      5          p(105),q(105),cl(13),sl(13)
       equivalence (g0,gh(1)),(g1,gh(121)),(g2,gh(241)),(g3,gh(361)),
      1            (g4,gh(481)),(g5,gh(601)),(g6,gh(721)),(g7,gh(841)),
@@ -528,7 +526,7 @@ c
      4            (ge,gh(1681)),(gf,gh(1801)),(gg,gh(1921)),
      5            (gi,gh(2041)),(gj,gh(2161)),(gk,gh(2281)),
      6            (gl,gh(2476)),(gm,gh(2671)),(gp,gh(2866)),
-     7            (gq,gh(3061)),(gr,gh(3256))
+     7            (gq,gh(3061)),(gr,gh(3256)),(gs,gh(3451))
 c
       data g0/ -31543.,-2298., 5922., -677., 2905.,-1061.,  924., 1121., 1900
      1           1022.,-1469., -330., 1256.,    3.,  572.,  523.,  876., 1900
@@ -925,46 +923,86 @@ c
      u            -0.07,    0.78,    0.54,   -0.18,    0.10,    0.38,    2010
      v             0.49,    0.02,    0.44,    0.42,   -0.25,   -0.26,    2010
      w            -0.53,   -0.26,   -0.79/                               2010
-      data gq/-29442.0,-1501.0, 4797.1,-2445.1, 3012.9,-2845.6, 1676.7,  2015
-     1          -641.9, 1350.7,-2352.3, -115.3, 1225.6,  244.9,  582.0,  2015
-     2          -538.4,  907.6,  813.7,  283.3,  120.4, -188.7, -334.9,  2015
-     3           180.9,   70.4, -329.5, -232.6,  360.1,   47.3,  192.4,  2015
-     4           197.0, -140.9, -119.3, -157.5,   16.0,    4.1,  100.2,  2015
-     5            70.0,   67.7,  -20.8,   72.7,   33.2, -129.9,   58.9,  2015
-     6           -28.9,  -66.7,   13.2,    7.3,  -70.9,   62.6,   81.6,  2015
-     7           -76.1,  -54.1,   -6.8,  -19.5,   51.8,    5.7,   15.0,  2015
-     8            24.4,    9.4,    3.4,   -2.8,  -27.4,    6.8,   -2.2,  2015
-     9            24.2,    8.8,   10.1,  -16.9,  -18.3,   -3.2,   13.3,  2015
-     a           -20.6,  -14.6,   13.4,   16.2,   11.7,    5.7,  -15.9,  2015
-     b            -9.1,   -2.0,    2.1,    5.4,    8.8,  -21.6,    3.1,  2015
-     c            10.8,   -3.3,   11.8,    0.7,   -6.8,  -13.3,   -6.9,  2015
-     d            -0.1,    7.8,    8.7,    1.0,   -9.1,   -4.0,  -10.5,  2015
-     e             8.4,   -1.9,   -6.3,    3.2,    0.1,   -0.4,    0.5,  2015
-     f             4.6,   -0.5,    4.4,    1.8,   -7.9,   -0.7,   -0.6,  2015
-     g             2.1,   -4.2,    2.4,   -2.8,   -1.8,   -1.2,   -3.6,  2015
-     h            -8.7,    3.1,   -1.5,   -0.1,   -2.3,    2.0,    2.0,  2015
-     i            -0.7,   -0.8,   -1.1,    0.6,    0.8,   -0.7,   -0.2,  2015
-     j             0.2,   -2.2,    1.7,   -1.4,   -0.2,   -2.5,    0.4,  2015
-     k            -2.0,    3.5,   -2.4,   -1.9,   -0.2,   -1.1,    0.4,  2015
-     l             0.4,    1.2,    1.9,   -0.8,   -2.2,    0.9,    0.3,  2015
-     m             0.1,    0.7,    0.5,   -0.1,   -0.3,    0.3,   -0.4,  2015
-     n             0.2,    0.2,   -0.9,   -0.9,   -0.1,    0.0,    0.7,  2015
-     o             0.0,   -0.9,   -0.9,    0.4,    0.4,    0.5,    1.6,  2015
-     p            -0.5,   -0.5,    1.0,   -1.2,   -0.2,   -0.1,    0.8,  2015
-     q             0.4,   -0.1,   -0.1,    0.3,    0.4,    0.1,    0.5,  2015
-     r             0.5,   -0.3,   -0.4,   -0.4,   -0.3,   -0.8/          2015
-      data gr/    10.3,   18.1,  -26.6,   -8.7,   -3.3,  -27.4,    2.1,  2017
-     1           -14.1,    3.4,   -5.5,    8.2,   -0.7,   -0.4,  -10.1,  2017
-     2             1.8,   -0.7,    0.2,   -1.3,   -9.1,    5.3,    4.1,  2017
-     3             2.9,   -4.3,   -5.2,   -0.2,    0.5,    0.6,   -1.3,  2017
-     4             1.7,   -0.1,   -1.2,    1.4,    3.4,    3.9,    0.0,  2017
-     5            -0.3,   -0.1,    0.0,   -0.7,   -2.1,    2.1,   -0.7,  2017
-     6            -1.2,    0.2,    0.3,    0.9,    1.6,    1.0,    0.3,  2017
-     7            -0.2,    0.8,   -0.5,    0.4,    1.3,   -0.2,    0.1,  2017
-     8            -0.3,   -0.6,   -0.6,   -0.8,    0.1,    0.2,   -0.2,  2017
-     9             0.2,    0.0,   -0.3,   -0.6,    0.3,    0.5,    0.1,  2017
-     a            -0.2,    0.5,    0.4,   -0.2,    0.1,   -0.3,   -0.4,  2017
-     b             0.3,    0.3,    0.0,115*0.0/                          2017
+      data gq/-29441.46,-1501.77, 4795.99,-2445.88, 3012.20,-2845.41,    2015
+     1          1676.35, -642.17, 1350.33,-2352.26, -115.29, 1225.85,    2015
+     2           245.04,  581.69, -538.70,  907.42,  813.68,  283.54,    2015
+     3           120.49, -188.43, -334.85,  180.95,   70.38, -329.23,    2015
+     4          -232.91,  360.14,   46.98,  192.35,  196.98, -140.94,    2015
+     5          -119.14, -157.40,   15.98,    4.30,  100.12,   69.55,    2015
+     6            67.57,  -20.61,   72.79,   33.30, -129.85,   58.74,    2015
+     7           -28.93,  -66.64,   13.14,    7.35,  -70.85,   62.41,    2015
+     8            81.29,  -75.99,  -54.27,   -6.79,  -19.53,   51.82,    2015
+     9             5.59,   15.07,   24.45,    9.32,    3.27,   -2.88,    2015
+     a           -27.50,    6.61,   -2.32,   23.98,    8.89,   10.04,    2015
+     b           -16.78,  -18.26,   -3.16,   13.18,  -20.56,  -14.60,    2015
+     c            13.33,   16.16,   11.76,    5.69,  -15.98,   -9.10,    2015
+     d            -2.02,    2.26,    5.33,    8.83,  -21.77,    3.02,    2015
+     e            10.76,   -3.22,   11.74,    0.67,   -6.74,  -13.20,    2015
+     f            -6.88,   -0.10,    7.79,    8.68,    1.04,   -9.06,    2015
+     g            -3.89,  -10.54,    8.44,   -2.01,   -6.26,    3.28,    2015
+     h             0.17,   -0.40,    0.55,    4.55,   -0.55,    4.40,    2015
+     i             1.70,   -7.92,   -0.67,   -0.61,    2.13,   -4.16,    2015
+     j             2.33,   -2.85,   -1.80,   -1.12,   -3.59,   -8.72,    2015
+     k             3.00,   -1.40,    0.00,   -2.30,    2.11,    2.08,    2015
+     l            -0.60,   -0.79,   -1.05,    0.58,    0.76,   -0.70,    2015
+     m            -0.20,    0.14,   -2.12,    1.70,   -1.44,   -0.22,    2015
+     n            -2.57,    0.44,   -2.01,    3.49,   -2.34,   -2.09,    2015
+     o            -0.16,   -1.08,    0.46,    0.37,    1.23,    1.75,    2015
+     p            -0.89,   -2.19,    0.85,    0.27,    0.10,    0.72,    2015
+     q             0.54,   -0.09,   -0.37,    0.29,   -0.43,    0.23,    2015
+     r             0.22,   -0.89,   -0.94,   -0.16,   -0.03,    0.72,    2015
+     s            -0.02,   -0.92,   -0.88,    0.42,    0.49,    0.63,    2015
+     t             1.56,   -0.42,   -0.50,    0.96,   -1.24,   -0.19,    2015
+     u            -0.10,    0.81,    0.42,   -0.13,   -0.04,    0.38,    2015
+     v             0.48,    0.08,    0.48,    0.46,   -0.30,   -0.35,    2015
+     w            -0.43,   -0.36,   -0.71/                               2015
+      data gr/ -29404.8, -1450.9,  4652.5, -2499.6,  2982.0, -2991.6,    2020
+     1           1676.9,  -734.6,  1363.2, -2381.2,   -82.1,  1236.2,    2020
+     2            241.9,   525.7,  -543.4,   903.0,   809.5,   281.9,    2020
+     3             86.3,  -158.4,  -309.4,   199.7,    48.0,  -349.7,    2020
+     4           -234.3,   363.2,    47.7,   187.8,   208.3,  -140.6,    2020
+     5           -121.2,  -151.2,    32.3,    13.5,    98.8,    66.0,    2020
+     6             65.5,   -19.1,    72.9,    25.1,  -121.5,    52.8,    2020
+     7            -36.2,   -64.5,    13.5,     8.9,   -64.7,    68.1,    2020
+     8             80.6,   -76.7,   -51.5,    -8.2,   -16.9,    56.5,    2020
+     9              2.2,    15.8,    23.5,     6.4,    -2.2,    -7.2,    2020
+     a            -27.2,     9.8,    -1.8,    23.7,     9.7,     8.4,    2020
+     b            -17.5,   -15.3,    -0.5,    12.8,   -21.1,   -11.7,    2020
+     c             15.3,    14.9,    13.7,     3.6,   -16.5,    -6.9,    2020
+     d             -0.3,     2.8,     5.0,     8.4,   -23.4,     2.9,    2020
+     e             11.0,    -1.5,     9.8,    -1.1,    -5.1,   -13.2,    2020
+     f             -6.3,     1.1,     7.8,     8.8,     0.4,    -9.3,    2020
+     g             -1.4,   -11.9,     9.6,    -1.9,    -6.2,     3.4,    2020
+     h             -0.1,    -0.2,     1.7,     3.5,    -0.9,     4.8,    2020
+     i              0.7,    -8.6,    -0.9,    -0.1,     1.9,    -4.3,    2020
+     j              1.4,    -3.4,    -2.4,    -0.1,    -3.8,    -8.8,    2020
+     k              3.0,    -1.4,     0.0,    -2.5,     2.5,     2.3,    2020
+     l             -0.6,    -0.9,    -0.4,     0.3,     0.6,    -0.7,    2020
+     m             -0.2,    -0.1,    -1.7,     1.4,    -1.6,    -0.6,    2020
+     n             -3.0,     0.2,    -2.0,     3.1,    -2.5,    -2.0,    2020
+     o             -0.1,    -1.2,     0.4,     0.5,     1.3,     1.4,    2020
+     p             -1.1,    -1.8,     0.7,     0.1,     0.3,     0.8,    2020
+     q              0.5,    -0.2,    -0.3,     0.6,    -0.5,     0.2,    2020
+     r              0.1,    -0.9,    -1.1,    -0.0,    -0.3,     0.5,    2020
+     s              0.1,    -0.9,    -0.9,     0.5,     0.6,     0.7,    2020
+     t              1.4,    -0.3,    -0.4,     0.8,    -1.3,    -0.0,    2020
+     u             -0.1,     0.8,     0.3,    -0.0,    -0.1,     0.4,    2020
+     v              0.5,     0.1,     0.5,     0.5,    -0.4,    -0.5,    2020
+     w             -0.3,    -0.4,    -0.6/                               2020
+      data gs/      5.7,     7.4,   -25.9,   -11.0,    -7.0,   -30.2,    2022
+     1             -2.1,   -22.4,     2.2,    -5.9,     6.0,     3.1,    2022
+     2             -1.1,   -12.0,     0.5,    -1.2,    -1.5,    -0.1,    2022
+     3             -5.9,     6.5,     5.2,     3.5,    -5.1,    -5.0,    2022
+     4             -0.3,     0.5,    -0.0,    -0.6,     2.5,     0.2,    2022
+     5             -0.6,     1.3,     3.0,     0.9,     0.3,    -0.5,    2022
+     6             -0.3,     0.0,     0.4,    -1.6,     1.3,    -1.3,    2022
+     7             -1.4,     0.8,    -0.0,     0.0,     0.9,     1.0,    2022
+     8             -0.1,    -0.2,     0.6,    -0.0,     0.6,     0.7,    2022
+     9             -0.8,     0.1,    -0.2,    -0.5,    -1.1,    -0.8,    2022
+     a              0.1,     0.8,     0.3,    -0.0,     0.1,    -0.2,    2022
+     b             -0.1,     0.6,     0.4,    -0.2,    -0.1,     0.5,    2022
+     c              0.4,    -0.3,     0.3,    -0.4,    -0.1,     0.5,    2022
+     d              0.4,     0.0, 115*0.0/                               2022
 
 c
 c     set initial values
@@ -972,12 +1010,12 @@ c
       x     = 0.0
       y     = 0.0
       z     = 0.0
-      if (date.lt.1900.0.or.date.gt.2025.0) go to 11
-      if (date.gt.2020.0) write (6,960) date
+      if (date.lt.1900.0.or.date.gt.2030.0) go to 11
+      if (date.gt.2025.0) write (6,960) date
   960 format (/' This version of the IGRF is intended for use up',
-     1        ' to 2020.0.'/' values for',f9.3,' will be computed',
+     1        ' to 2025.0.'/' values for',f9.3,' will be computed',
      2        ' but may be of reduced accuracy'/)
-      if (date.ge.2015.0) go to 1
+      if (date.ge.2020.0) go to 1
       t     = 0.2*(date - 1900.0)                                             
       ll    = t
       one   = ll
@@ -1007,7 +1045,7 @@ c
       end if
       go to 2
 c
-    1 t     = date - 2015.0
+    1 t     = date - 2020.0
       tc    = 1.0
       if (isv.eq.1) then
        t = 1.0
@@ -1016,7 +1054,7 @@ c
 c
 c     pointer for last coefficient in pen-ultimate set of MF coefficients...
 c
-      ll    = 3060
+      ll    = 3255
       nmx   = 13
       nc    = nmx*(nmx+2)
       kmx   = (nmx+1)*(nmx+2)/2
@@ -1120,6 +1158,6 @@ c
       write (6,961) date
   961 format (/' This subroutine will not work with a date of',
      1        f9.3,'.  Date must be in the range 1900.0.ge.date',
-     2        '.le.2025.0. On return f = 1.0d8., x = y = z = 0.')
+     2        '.le.2030.0. On return f = 1.0d8., x = y = z = 0.')
       return
       end
