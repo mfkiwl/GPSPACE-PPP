@@ -18801,10 +18801,10 @@ C!!
 C!! Code Beg =============================================================
 C!!   DATA POLECONV/2003/
 C!!   DATA POLECONV/2010/
-C!!   DATA POLECONV/2015/
-      DATA POLECONV,IERR/2019,0/                                        SECULAR POLE IMPLEMENTATION
-      DATA XSECPOLE,YSECPOLE,XSECRATE,YSECRATE
-     &     55.0D-3,320.5D-3,1.677D-3,3.460D-3/                          PUBLISHED VALUES (@ 2000.0)
+      DATA POLECONV/2015/
+C!!   DATA POLECONV,IERR/2019,0/                                        SECULAR POLE IMPLEMENTATION
+C!!   DATA XSECPOLE,YSECPOLE,XSECRATE,YSECRATE
+C!!  &    /55.0D-3,320.5D-3,1.677D-3,3.460D-3/                          PUBLISHED VALUES (@ 2000.0)
 C!! Code End =============================================================
 C
 C
