@@ -857,7 +857,10 @@ C      READ COMMAND FILE
 C      
       IDC=1
       CALL RDCMD( LUI, LUO, LUCMD, NAMCMD, NFREQ, IFMTM, IFMTE,  
-     &            MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &            MISCFACTR, MISCFACTP, EPOCH,
+c    &            MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
      &            SDPR, XRVMRK, XRVVEL, IXRVRNX,ANTH(1),ICLKSOL,CUTOFF, 
      &            IDC, ICMDERR, NUCMD, IUCMD, DOPMAX, HDXYZH, DTM, 
      &            PI, SDCP, SDTROP, CMDLST, ICMD, SMTHCLK, LNG )
@@ -17668,7 +17671,10 @@ C Copyright (c) 2018 Government of Canada. Under MIT License terms
 C Droit d'auteur (c) Gouvernement du Canada, 2018. Sous termes de Licence MIT
 C
       SUBROUTINE RDCMD( LU, LUO, LUCMD, FNAM, NFREQ, IFMTM, IFMTE, 
-     &                  MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &                  MISCFACTR, MISCFACTP, DATEPO,
+c    &                  MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
      &                  SDP, XRVMRK,XRVVEL,IXRVRNX,ANTH, ICLKSOL,CUTOFF, 
      &                  IDC, IERR, NUCMD, IUCMD, DOPMAX, HDXYZH, DTM, 
      &                  PI, SDCP, SDTROP, CMDLST, ICMD, SMTHCLK, LNG )
@@ -17721,6 +17727,9 @@ C
       REAL*8    HDXYZH(*),XRVMRK(*),DTM(*)
       REAL*8    XRVVEL(*),XRNV, XREV, XRHV
       REAL*8    MISCFACTR, MISCFACTP
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &         , DATEPO
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C
       INTEGER*4     IOPTER(MAXCMD),I,IOP,IOPT,NMOD,NOPTERR,IL,IXRV
      &             ,IR
@@ -17730,6 +17739,9 @@ C
       REAL*8        OPTMIN(MAXCMD)
       REAL*8        OPTMAX(MAXCMD)
       REAL*8    MISCR_FACT, MISCP_FACT
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &         , POSEPO
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C
       CHARACTER*80      COMMENT
       CHARACTER*6       CMDI(13,5)
@@ -17918,9 +17930,18 @@ C
      &   MISCFACTP=MISCP_FACT
       DO 130 I=1,3
       XRVVEL(I)= 0.0D0              
-      READ(LUCMD,'(52x,2f15.4)',END=140,ERR=140) OPT(IUCMD(I+15)),
-     &  XRVVEL(I)
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+c     READ(LUCMD,'(52x,2f15.4)',END=140,ERR=140) OPT(IUCMD(I+15)),
+c    &  XRVVEL(I)
+      POSEPO=0.D0
+      READ(LUCMD,'(52x,3f15.4)',END=140,ERR=140) OPT(IUCMD(I+15)),
+     &  XRVVEL(I), POSEPO
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 140   CONTINUE                        
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+      IF( POSEPO .NE. 0.D0 )
+     &  OPT(IUCMD(I+15))=OPT(IUCMD(I+15))+( DATEPO-POSEPO)*XRVVEL(I)
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C sta vel from m/year to m/sec
       XRVVEL(I)= XRVVEL(I)/86400.D0/365.25D0
 130   CONTINUE
@@ -18801,10 +18822,10 @@ C!!
 C!! Code Beg =============================================================
 C!!   DATA POLECONV/2003/
 C!!   DATA POLECONV/2010/
-      DATA POLECONV/2015/
-C!!   DATA POLECONV,IERR/2019,0/                                        SECULAR POLE IMPLEMENTATION
-C!!   DATA XSECPOLE,YSECPOLE,XSECRATE,YSECRATE
-C!!  &    /55.0D-3,320.5D-3,1.677D-3,3.460D-3/                          PUBLISHED VALUES (@ 2000.0)
+C!!   DATA POLECONV/2015/
+      DATA POLECONV,IERR/2019,0/                                        SECULAR POLE IMPLEMENTATION
+      DATA XSECPOLE,YSECPOLE,XSECRATE,YSECRATE
+     &    /55.0D-3,320.5D-3,1.677D-3,3.460D-3/                          PUBLISHED VALUES (@ 2000.0)
 C!! Code End =============================================================
 C
 C
