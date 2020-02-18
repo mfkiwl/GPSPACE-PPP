@@ -9422,10 +9422,16 @@ C
      &    IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
      &    SECCOR, CLKOS, CLKSD
          ELSE
-          READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6,I3,2X,2(1X,E19.12))',
+c Lahaye : 2020Feb13 : problem reading this when HDCLX stops at WIDELANE
+c         READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6,I3,2X,2(1X,E19.12))',
+c    &    ERR=190)
+c    &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
+c    &    SECCOR, NECLK, CLKOS, CLKSD
+          READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6)',
      &    ERR=190)
      &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
-     &    SECCOR, NECLK, CLKOS, CLKSD
+     &    SECCOR
+c Lahaye : 2020Feb13 : problem reading this when HDCLX stops at WIDELANE
          END IF
 C
          CALL GPSDC ( IDOY, IYCOR, IMCOR, IDCOR, IWKCOR, IDCOR, 2)
