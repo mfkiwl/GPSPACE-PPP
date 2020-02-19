@@ -857,7 +857,10 @@ C      READ COMMAND FILE
 C      
       IDC=1
       CALL RDCMD( LUI, LUO, LUCMD, NAMCMD, NFREQ, IFMTM, IFMTE,  
-     &            MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &            MISCFACTR, MISCFACTP, EPOCH,
+c    &            MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
      &            SDPR, XRVMRK, XRVVEL, IXRVRNX,ANTH(1),ICLKSOL,CUTOFF, 
      &            IDC, ICMDERR, NUCMD, IUCMD, DOPMAX, HDXYZH, DTM, 
      &            PI, SDCP, SDTROP, CMDLST, ICMD, SMTHCLK, LNG )
@@ -9422,10 +9425,16 @@ C
      &    IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
      &    SECCOR, CLKOS, CLKSD
          ELSE
-          READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6,I3,2X,2(1X,E19.12))',
+c Lahaye : 2020Feb13 : problem reading this when HDCLX stops at WIDELANE
+c         READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6,I3,2X,2(1X,E19.12))',
+c    &    ERR=190)
+c    &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
+c    &    SECCOR, NECLK, CLKOS, CLKSD
+          READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6)',
      &    ERR=190)
      &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
-     &    SECCOR, NECLK, CLKOS, CLKSD
+     &    SECCOR
+c Lahaye : 2020Feb13 : problem reading this when HDCLX stops at WIDELANE
          END IF
 C
          CALL GPSDC ( IDOY, IYCOR, IMCOR, IDCOR, IWKCOR, IDCOR, 2)
@@ -16137,7 +16146,7 @@ C
       ELONG= PLZ(2)*180.D0/PI
       DATE = IYR+JDAY/365.25D0
 C
-      CALL igrf12syn (  0,date,    1,HION,colat,elong,x,y,z,BP)
+      CALL igrf13syn (  0,date,    1,HION,colat,elong,x,y,z,BP)
 C FIELD COMPONENTs (nT) x +ve N, y +ve E & Z +ve DOWN /CHANGE UP !           
       Z=-Z
 C
@@ -17690,7 +17699,10 @@ C Copyright (c) 2018 Government of Canada. Under MIT License terms
 C Droit d'auteur (c) Gouvernement du Canada, 2018. Sous termes de Licence MIT
 C
       SUBROUTINE RDCMD( LU, LUO, LUCMD, FNAM, NFREQ, IFMTM, IFMTE, 
-     &                  MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &                  MISCFACTR, MISCFACTP, DATEPO,
+c    &                  MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
      &                  SDP, XRVMRK,XRVVEL,IXRVRNX,ANTH, ICLKSOL,CUTOFF, 
      &                  IDC, IERR, NUCMD, IUCMD, DOPMAX, HDXYZH, DTM, 
      &                  PI, SDCP, SDTROP, CMDLST, ICMD, SMTHCLK, LNG )
@@ -17743,6 +17755,9 @@ C
       REAL*8    HDXYZH(*),XRVMRK(*),DTM(*)
       REAL*8    XRVVEL(*),XRNV, XREV, XRHV
       REAL*8    MISCFACTR, MISCFACTP
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &         , DATEPO
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C
       INTEGER*4     IOPTER(MAXCMD),I,IOP,IOPT,NMOD,NOPTERR,IL,IXRV
      &             ,IR
@@ -17752,6 +17767,9 @@ C
       REAL*8        OPTMIN(MAXCMD)
       REAL*8        OPTMAX(MAXCMD)
       REAL*8    MISCR_FACT, MISCP_FACT
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &         , POSEPO
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C
       CHARACTER*80      COMMENT
       CHARACTER*6       CMDI(13,5)
@@ -17940,9 +17958,18 @@ C
      &   MISCFACTP=MISCP_FACT
       DO 130 I=1,3
       XRVVEL(I)= 0.0D0              
-      READ(LUCMD,'(52x,2f15.4)',END=140,ERR=140) OPT(IUCMD(I+15)),
-     &  XRVVEL(I)
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+c     READ(LUCMD,'(52x,2f15.4)',END=140,ERR=140) OPT(IUCMD(I+15)),
+c    &  XRVVEL(I)
+      POSEPO=0.D0
+      READ(LUCMD,'(52x,3f15.4)',END=140,ERR=140) OPT(IUCMD(I+15)),
+     &  XRVVEL(I), POSEPO
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 140   CONTINUE                        
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+      IF( POSEPO .NE. 0.D0 )
+     &  OPT(IUCMD(I+15))=OPT(IUCMD(I+15))+( DATEPO-POSEPO)*XRVVEL(I)
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C sta vel from m/year to m/sec
       XRVVEL(I)= XRVVEL(I)/86400.D0/365.25D0
 130   CONTINUE
@@ -18816,13 +18843,17 @@ C
       REAL*8          FMJD,DT,DTP
       INTEGER*4       POLECONV,IERR
       REAL*8          EPOCH,XMEAN,YMEAN,XRATE,YRATE
+      REAL*8          XSECPOLE,YSECPOLE,XSECRATE,YSECRATE
 C!!
 C!! CHOOSE (UNCOMMENT) ONE OF THE FOLLOWING
 C!!
 C!! Code Beg =============================================================
 C!!   DATA POLECONV/2003/
 C!!   DATA POLECONV/2010/
-      DATA POLECONV/2015/
+C!!   DATA POLECONV/2015/
+      DATA POLECONV,IERR/2019,0/                                        SECULAR POLE IMPLEMENTATION
+      DATA XSECPOLE,YSECPOLE,XSECRATE,YSECRATE
+     &    /55.0D-3,320.5D-3,1.677D-3,3.460D-3/                          PUBLISHED VALUES (@ 2000.0)
 C!! Code End =============================================================
 C
 C
@@ -18856,22 +18887,31 @@ C
       MJD= INT(FMJD+1.d-3) - MJDS
       IF(MJD.GE.0.AND.MJD.LE.1) THEN
         FMJDMP=FMJD
+        IF( POLECONV .NE. 2019 ) THEN
 C COMPUTE MEAN POLE AT INTEGER FMJD AFTER
-        EPOCH=(INT(FMJDMP)+1-51544)/365.25D0+2000.0D0
-        CALL IERS_CMP_2015( POLECONV, EPOCH, XRATE, YRATE, IERR )
-        IF( IERR .LT. 0 ) GOTO 250
+         EPOCH=(INT(FMJDMP)+1-51544)/365.25D0+2000.0D0
+         CALL IERS_CMP_2015( POLECONV, EPOCH, XRATE, YRATE, IERR )
+         IF( IERR .LT. 0 ) GOTO 250
 C COMPUTE MEAN POLE AT INTEGER FMJD BEFORE
-        EPOCH=(INT(FMJDMP)+0-51544)/365.25D0+2000.0D0
-        CALL IERS_CMP_2015( POLECONV, EPOCH, XMEAN, YMEAN, IERR )
-        IF( IERR .LT. 0 ) GOTO 250
-        XRATE=(XRATE-XMEAN)
-        YRATE=(YRATE-YMEAN)
+         EPOCH=(INT(FMJDMP)+0-51544)/365.25D0+2000.0D0
+         CALL IERS_CMP_2015( POLECONV, EPOCH, XMEAN, YMEAN, IERR )
+         IF( IERR .LT. 0 ) GOTO 250
+         XRATE=(XRATE-XMEAN)
+         YRATE=(YRATE-YMEAN)
+        ENDIF
 C COMPUTE MEAN POLE AT FMJD
         EPOCH=(FMJDMP-51544)/365.25D0+2000.0D0
-        CALL IERS_CMP_2015( POLECONV, EPOCH, XMEAN, YMEAN, IERR )
-        IF( IERR .LT. 0 ) GOTO 250
-        IF( IERR .NE. 0 )
+        IF( POLECONV .EQ. 2019 ) THEN
+         XMEAN=XSECPOLE+XSECRATE*(EPOCH-2000.0D0)
+         YMEAN=YSECPOLE+YSECRATE*(EPOCH-2000.0D0)
+         XRATE=XSECRATE/365.25D0
+         YRATE=YSECRATE/365.25D0
+        ELSE
+         CALL IERS_CMP_2015( POLECONV, EPOCH, XMEAN, YMEAN, IERR )
+         IF( IERR .LT. 0 ) GOTO 250
+         IF( IERR .NE. 0 )
      &    WRITE(LUO,*) 'RDERP WARNING: MEAN POLE EXTENSION :',POLECONV
+        ENDIF
         XMPDIF=IX*1.D-6
         YMPDIF=IY*1.D-6
         XMPDRT=IXRT*1.D-6
@@ -18881,6 +18921,7 @@ C COMPUTE MEAN POLE AT FMJD
         XMPDRT=XMPDRT-XRATE
         YMPDRT=YMPDRT-YRATE
         IERP=1
+        GOTO 250
       ENDIF
       GO TO 210
   250 CONTINUE
