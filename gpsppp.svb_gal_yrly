@@ -1,62 +1,127 @@
 HDR NOMINAL GALILEO ANTENNA OFFSETS PER BLK
 HDR         dX      dY      dZ
-BLK GA1  41 -0.200   0.0     0.6
-BLK GA2  42  0.150   0.0     1.0
+BLK GA1  41 -0.200   0.0      0.6      
+BLK GA2  42 0.150    0.0      1.0      
 HDR
 HDR45678901234567890123456789012345678901234567890123456789012345678901234567890
 HDR
 HDR                                   G A L I L E O
 HDR
 HDR                                               International Designation
-HDR                                                  P2-C2 CODE BIAS      |
+HDR                                                  P?-C? CODE BIAS      |
 HDR                    1 sec. ALLAN VARIANCE OF CLOCK(10E-11)      |      |
-HDR                                     P1-C1 CODE BIAS     |      |      |
-HDR                             P1-P2 CODE BIAS       |     |      |      |
+HDR                                     P?-C? CODE BIAS     |      |      |
+HDR                             C1-C5 CODE BIAS       |     |      |      |
 HDR                      CLK Cs=1,Rb=2,HM=3   |       |     |      |      |
-HDR                    FREQUENCY   OFFSET |   |       |     |      |      |
+HDR                            PLANE SLOT |   |       |     |      |      |
 HDR            PLANE    A=1,B=2,..,F=6  | |   |       |     |      |      |
 HDR       BLK ( + 10 )           --  |  | |   |       |     |      |      |
 HDR                                | |  | |   |       |     |      |      |
 HDR LAUNCH     DCOMMISSION  P   S  B P  S C   |       |     |      |      |         
 HDR DATE       DATE         R   V  L L  L L   |       |     |      |      |
-HDR YYYY MM DD YYYY MM DD   N   N  K N  T K   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
+HDR YYYY MM DD YYYY MM DD   N   N  K N  T K   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
 HDR45678901234567890123456789012345678901234567890123456789012345678901234567890
-HDR GAL01                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2016 05 24 2040 01 01  65 210 42 1  2 3   0.0     0.0   0.0    0.0    2016-030B
-HDR GAL02                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2016 05 24 2040 01 01  66 211 42 1  6 3   0.0     0.0   0.0    0.0    2016-030A
-HDR GAL03                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2016 11 17 2040 01 01  67 212 42 3  8 3   0.0     0.0   0.0    0.0    2016-069B 
-HDR GAL04                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2016 11 17 2040 01 01  68 213 42 3  3 3   0.0     0.0   0.0    0.0    2016-069C 
-HDR GAL05                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2016 11 17 2040 01 01  69 214 42 3  1 3   0.0     0.0   0.0    0.0    2016-069D 
-HDR GAL07                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2016 11 17 2040 01 01  71 207 42 3  6 3   0.0     0.0   0.0    0.0    2016-069A 
-HDR GAL08                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2015 12 17 2040 01 01  72 208 42 3  7 3   0.0     0.0   0.0    0.0    2015-079B         
-HDR GAL09                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2015 12 17 2040 01 01  73 209 42 3  2 3   0.0     0.0   0.0    0.0    2015-079A         
-HDR GAL11                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2011 10 21 2040 01 01  75 101 41 2  5 3   0.0     0.0   0.0    0.0    2011-060A         
-HDR GAL12                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2011 10 21 2040 01 01  76 102 41 2  6 2   0.0     0.0   0.0    0.0    2011-060B         
-HDR GAL14                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2014 08 22 2016 03 19  78 202 42 2  5 3   0.0     0.0   0.0    0.0    2014-050B failure 
-HDR GAL18                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2014 08 22 2016 03 19  82 201 42 2  6 3   0.0     0.0   0.0    0.0    2014-050A failure 
-HDR GAL19                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2012 10 12 2040 01 01  83 103 41 3  4 3   0.0     0.0   0.0    0.0    2012-055A         
-HDR GAL20                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2012 10 12 2040 01 01  84 104 41 3  5 3   0.0     0.0   0.0    0.0    2012-055B         
-HDR GAL21                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2018 10 12 2040 01 01  85 215 42 1  3 3   0.0     0.0   0.0    0.0    2017-079A         
-HDR GAL22                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2015 03 27 2040 01 01  86 204 42 2  3 3   0.0     0.0   0.0    0.0    2015-017B         
-HDR GAL24                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2015 09 11 2040 01 01  88 205 42 1  8 3   0.0     0.0   0.0    0.0    2015-045A         
-HDR GAL26                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2015 03 27 2040 01 01  90 203 42 2  8 3   0.0     0.0   0.0    0.0    2015-017A         
-HDR GAL30                 PRN SVN BL P SL C   P1P2    P1C1  AVCLK  P2C2   INT. ID   Comment
-GAL 2015 09 11 2040 01 01  94 206 42 1  5 3   0.0     0.0   0.0    0.0    2015-045B         
+HDR GAL01                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2016 05 24 2019 08 31  65 210 42 1  2 3   3.787   0.0   0.0    0.0    2016-030B
+GAL 2019 09 01 2019 12 31  65 210 42 1  2 3   1.487   0.0   0.0    0.0    2016-030B BiasChange
+GAL 2020 01 01 2040 01 01  65 210 42 1  2 3   1.487   0.0   0.0    0.0    2016-030B Biases Yrly Average
+HDR GAL02                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2016 05 24 2019 08 21  66 211 42 1  6 3   4.903   0.0   0.0    0.0    2016-030A
+GAL 2019 09 01 2019 12 31  66 211 42 1  6 3   2.610   0.0   0.0    0.0    2016-030A BiasChange
+GAL 2020 01 01 2040 01 01  66 211 42 1  6 3   2.610   0.0   0.0    0.0    2016-030A Biases Yrly Average
+HDR GAL03                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2016 11 17 2019 08 31  67 212 42 3  8 3   1.490   0.0   0.0    0.0    2016-069B
+GAL 2019 09 01 2019 12 31  67 212 42 3  8 3  -0.730   0.0   0.0    0.0    2016-069B BiasChange
+GAL 2020 01 01 2040 01 01  67 212 42 3  8 3  -0.730   0.0   0.0    0.0    2016-069B Biases Yrly Average
+HDR GAL04                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2016 11 17 2019 08 31  68 213 42 3  3 3   6.409   0.0   0.0    0.0    2016-069C
+GAL 2019 09 01 2019 12 31  68 213 42 3  3 3   4.178   0.0   0.0    0.0    2016-069C BiasChange
+GAL 2020 01 01 2040 01 01  68 213 42 3  3 3   4.178   0.0   0.0    0.0    2016-069C Biases Yrly Average
+HDR GAL05                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2016 11 17 2019 08 31  69 214 42 3  1 3   1.213   0.0   0.0    0.0    2016-069D
+GAL 2019 09 01 2019 12 31  69 214 42 3  1 3  -1.044   0.0   0.0    0.0    2016-069D BiasChange
+GAL 2020 01 01 2040 01 01  69 214 42 3  1 3  -1.044   0.0   0.0    0.0    2016-069D Biases Yrly Average
+HDR GAL07                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2016 11 17 2019 08 31  71 207 42 3  6 3  -0.180   0.0   0.0    0.0    2016-069A
+GAL 2019 09 01 2019 12 31  71 207 42 3  6 3  -2.372   0.0   0.0    0.0    2016-069A BiasChange
+GAL 2020 01 01 2040 01 01  71 207 42 3  6 3  -2.372   0.0   0.0    0.0    2016-069A Biases Yrly Average
+HDR GAL08                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2015 12 17 2019 08 31  72 208 42 3  7 3   6.781   0.0   0.0    0.0    2015-079B
+GAL 2019 09 01 2019 12 31  72 208 42 3  7 3   4.580   0.0   0.0    0.0    2015-079B BiasChange
+GAL 2020 01 01 2040 01 01  72 208 42 3  7 3   4.580   0.0   0.0    0.0    2015-079B Biases Yrly Average
+HDR GAL09                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2015 12 17 2019 08 01  73 209 42 3  2 3   2.623   0.0   0.0    0.0    2015-079A
+GAL 2019 09 01 2019 12 31  73 209 42 3  2 3   0.416   0.0   0.0    0.0    2015-079A BiasChange
+GAL 2020 01 01 2040 01 01  73 209 42 3  2 3   0.416   0.0   0.0    0.0    2015-079A Biases Yrly Average
+HDR GAL11                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2011 10 21 2019 08 31  75 101 41 2  5 3  14.768   0.0   0.0    0.0    2011-060A
+GAL 2019 09 01 2019 12 31  75 101 41 2  5 3  12.397   0.0   0.0    0.0    2011-060A BiasChange
+GAL 2020 01 01 2040 01 01  75 101 41 2  5 3  12.397   0.0   0.0    0.0    2011-060A Biases Yrly Average
+HDR GAL12                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2011 10 21 2019 08 31  76 102 41 2  6 2  12.381   0.0   0.0    0.0    2011-060B
+GAL 2019 09 01 2019 12 31  76 102 41 2  6 2  10.137   0.0   0.0    0.0    2011-060B BiasChange
+GAL 2020 01 01 2040 01 01  76 102 41 2  6 2  10.137   0.0   0.0    0.0    2011-060B Biases Yrly Average
+HDR GAL13                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2018 07 25 2019 08 31  77 220 42 2  1 3   3.355   0.0   0.0    0.0    2018-060D
+GAL 2019 09 01 2019 12 31  77 220 42 2  1 3   1.358   0.0   0.0    0.0    2018-060D BiasChange
+GAL 2020 01 01 2040 01 01  77 220 42 2  1 3   1.358   0.0   0.0    0.0    2018-060D Biases Yrly Average
+HDR GAL14                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2014 08 22 2016 03 19  78 202 42 2  5 3 -26.010   0.0   0.0    0.0    2014-050B failure 
+HDR GAL15                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2018 07 25 2019 08 31  79 221 42 2  2 3  -1.294   0.0   0.0    0.0    2018-060A
+GAL 2019 09 01 2019 12 31  79 221 42 2  2 3  -3.292   0.0   0.0    0.0    2018-060A BiasChange
+GAL 2020 01 01 2040 01 01  79 221 42 2  2 3  -3.292   0.0   0.0    0.0    2018-060A Biases Yrly Average
+HDR GAL18                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2014 08 22 2016 03 19  82 201 42 2  6 3 -10.457   0.0   0.0    0.0    2014-050A failure 
+HDR GAL19                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2012 10 12 2019 08 31  83 103 41 3  4 3   6.877   0.0   0.0    0.0    2012-055A
+GAL 2019 09 01 2019 12 31  83 103 41 3  4 3   4.479   0.0   0.0    0.0    2012-055A BiasChange
+GAL 2020 01 01 2040 01 01  83 103 41 3  4 3   4.479   0.0   0.0    0.0    2012-055A Biases Yrly Average
+HDR GAL20                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2012 10 12 2040 01 01  84 104 41 3  5 3   0.0     0.0   0.0    0.0    2012-055B
+HDR GAL21                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2018 10 12 2019 08 31  85 215 42 1  3 3   1.969   0.0   0.0    0.0    2017-079A
+GAL 2019 09 01 2019 12 31  85 215 42 1  3 3  -0.181   0.0   0.0    0.0    2017-079A BiasChange
+GAL 2020 01 01 2040 01 01  85 215 42 1  3 3  -0.181   0.0   0.0    0.0    2017-079A Biases Yrly Average
+HDR GAL22                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2015 03 27 2040 01 01  86 204 42 2  3 3   0.0     0.0   0.0    0.0    2015-017B
+HDR GAL24                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2015 09 11 2019 08 31  88 205 42 1  8 3 -33.685   0.0   0.0    0.0    2015-045A
+GAL 2019 09 01 2019 12 31  88 205 42 1  8 3 -36.172   0.0   0.0    0.0    2015-045A BiasChange
+GAL 2020 01 01 2040 01 01  88 205 42 1  8 3 -36.172   0.0   0.0    0.0    2015-045A Biases Yrly Average
+HDR GAL25                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2017 12 12 2019 08 31  89 216 42 1  4 3   1.088   0.0   0.0    0.0    2017-079B
+GAL 2019 09 01 2019 12 31  89 216 42 1  4 3  -1.248   0.0   0.0    0.0    2017-079B BiasChange
+GAL 2020 01 01 2040 01 01  89 216 42 1  4 3  -1.248   0.0   0.0    0.0    2017-079B Biases Yrly Average
+HDR GAL26                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2015 03 27 2019 08 31  90 203 42 2  8 3  -0.889   0.0   0.0    0.0    2015-017A
+GAL 2019 09 01 2019 12 31  90 203 42 2  8 3  -3.073   0.0   0.0    0.0    2015-017A BiasChange
+GAL 2020 01 01 2040 01 01  90 203 42 2  8 3  -3.073   0.0   0.0    0.0    2015-017A Biases Yrly Average
+HDR GAL27                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2017 12 12 2019 08 31  91 217 42 1  4 3   2.294   0.0   0.0    0.0    2017-079C
+GAL 2019 09 01 2019 12 31  91 217 42 1  4 3   0.028   0.0   0.0    0.0    2017-079C BiasChange
+GAL 2020 01 01 2040 01 01  91 217 42 1  4 3   0.028   0.0   0.0    0.0    2017-079C Biases Yrly Average
+HDR GAL30                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2015 09 11 2019 08 31  94 206 42 1  5 3   2.478   0.0   0.0    0.0    2015-045B
+GAL 2019 09 01 2019 12 31  94 206 42 1  5 3   0.169   0.0   0.0    0.0    2015-045B BiasChange
+GAL 2020 01 01 2040 01 01  94 206 42 1  5 3   0.169   0.0   0.0    0.0    2015-045B Biases Yrly Average
+HDR GAL31                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2017 12 12 2019 08 31  95 218 42 1  1 3   0.161   0.0   0.0    0.0    2017-079D
+GAL 2019 09 01 2019 12 31  95 218 42 1  1 3  -2.093   0.0   0.0    0.0    2017-079D BiasChange
+GAL 2020 01 01 2040 01 01  95 218 42 1  1 3  -2.093   0.0   0.0    0.0    2017-079D Biases Yrly Average
+HDR GAL33                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2018 07 25 2019 08 31  97 222 42 1  1 3   6.037   0.0   0.0    0.0    2018-060B
+GAL 2019 09 01 2019 12 31  97 222 42 1  1 3   4.238   0.0   0.0    0.0    2018-060B BiasChange
+GAL 2020 01 01 2040 01 01  97 222 42 1  1 3   4.238   0.0   0.0    0.0    2018-060B Biases Yrly Average
+HDR GAL36                 PRN SVN BL P SL C   C1C5    P1C1  AVCLK  P2C2   INT. ID   Comment
+GAL 2018 07 25 2019 08 31 100 219 42 1  1 3  -1.069   0.0   0.0    0.0    2018-060C
+GAL 2019 09 01 2019 12 31 100 219 42 1  1 3  -2.871   0.0   0.0    0.0    2018-060C BiasChange
+GAL 2020 01 01 2040 01 01 100 219 42 1  1 3  -2.871   0.0   0.0    0.0    2018-060C Biases Yrly Average
 HDR45678901234567890123456789012345678901234567890123456789012345678901234567890
+HDR
+HDR C1C5 biases are derived as weighted means of weekly averages as determined
+HDR by CGS-NRCan starting in 2018.
+HDR
+HDR Starting September 2019, C1C5 biases come from the code_monthly.bia file.
+HDR The change caused a jump of about -2ns across the Galileo constellation.
+HDR
