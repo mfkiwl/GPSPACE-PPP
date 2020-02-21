@@ -193,7 +193,7 @@ C WARNING! BEFORE OCT 11, 2016 IGEO-6 WAS PRN 15! CHANGE INPRN TO PRN 13!
 C ALSO APPLICABLE TO IGES-1 (C06) (internally PRN 106) since Oct 2016
 C AND             TO  MEO -1 (C14) (internally PRN 114) since March 2017!
 C ALL BEIDOU 3 MAY EMPLOY YS, TOO, SO
-C BEI MEO/IGEO BLKS 25, 26 IN SVB ALSO INVOKE GAL ECLIPSING WHEN INPRN=0
+C BEI MEO/IGEO BLKS 65, 66 IN SVB ALSO INVOKE GAL ECLIPSING WHEN INPRN=0
       DATA YRTIN/0.0D0/, YBSIN/ 0.0D0/, INPRN/0/
 C
 C GNNS Dependent RX ant OFFSET
@@ -873,7 +873,10 @@ C      READ COMMAND FILE
 C      
       IDC=1
       CALL RDCMD( LUI, LUO, LUCMD, NAMCMD, NFREQ, IFMTM, IFMTE,  
-     &            MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &            MISCFACTR, MISCFACTP, EPOCH,
+c    &            MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
      &            SDPR, XRVMRK, XRVVEL, IXRVRNX,ANTH(1),ICLKSOL,CUTOFF, 
      &            IDC, ICMDERR, NUCMD, IUCMD, DOPMAX, HDXYZH, DTM, 
      &            PI, SDCP, SDTROP, CMDLST, ICMD, SMTHCLK, LNG )
@@ -2026,7 +2029,7 @@ C when reprocessing already filtered remember Cslip
 C
 C start PR COOR (Wanninger & Beer 2014)                  
        IF(ISVO(I).GT.100.AND.ISVO(I).LE.136.AND.EL(K).NE.0.D0
-C GEO (BLK 23 & BLK 27) Excluded below
+C GEO (BLK 63 & BLK 67) Excluded below
      &   ) THEN
          PR1(I)= PR1(I) + BEIPR(1, EL(K), IBLK(ISVO(I)))/C
          PR2(I)= PR2(I) + BEIPR(2, EL(K), IBLK(ISVO(I)))/C
@@ -7836,7 +7839,7 @@ C
 C         VARIABLES USED     -IFREQ , ELEV , IBLK       ,
 C           IFREQ - 1, 2, 3 FOR BEIDOU FREQ B1, B2, B3
 C           ELEV  - SAT ELVATION IN DEG
-C           IBLK  - BEIDOU MEO(21, 25), IGEO(22, 26), GEO(23, 27)
+C           IBLK  - BEIDOU MEO(61, 65), IGEO(62, 66), GEO(63, 67)
 C           NOTE: IGEO Table used also fo GEO satellites
 C 
 C         VARIABLES ALTERED  -BEIPR   ,        ,        , 
@@ -7888,8 +7891,11 @@ C  GEO B3
 C 
 C 
        IELV= 1 + (ELEV)/10
-       IBL = IBLK-20
-C BEIDOU 3 IBLK .GE. 25 !
+c Lahaye : 2019Oct18 : SV block indeces change
+c      IBL = IBLK-20
+       IBL = IBLK-60
+c Lahaye : 2019Oct18 : SV block indeces change
+C BEIDOU 3 IBLK .GE. 65 !
        IF(IBL.GT.4) IBL= IBL-4
 C BEIPR IS TO BE ADDED TO THE OBSERVED PR
        BEIPR = PRCOR(IELV, IFREQ, IBL)+(PRCOR(IELV+1, IFREQ,IBL) 
@@ -9678,10 +9684,16 @@ C
      &    IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
      &    SECCOR, CLKOS, CLKSD
          ELSE
-          READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6,I3,2X,2(1X,E19.12))',
+c Lahaye : 2020Feb13 : problem reading this when HDCLX stops at WIDELANE
+c         READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6,I3,2X,2(1X,E19.12))',
+c    &    ERR=190)
+c    &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
+c    &    SECCOR, NECLK, CLKOS, CLKSD
+          READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6)',
      &    ERR=190)
      &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
-     &    SECCOR, NECLK, CLKOS, CLKSD
+     &    SECCOR
+c Lahaye : 2020Feb13 : problem reading this when HDCLX stops at WIDELANE
          END IF
 C
          CALL GPSDC ( IDOY, IYCOR, IMCOR, IDCOR, IWKCOR, IDCOR, 2)
@@ -9927,8 +9939,8 @@ C
 C                      Mar 09, 2016 - upper limits for GLONASS PRN's -64
 C                      
 C                      Jan 10, 2017  BEIDOU (PRN: 101-136) ECLIPSING
-C                                    GEO(BLKs 23, 27) - ON (Orbit normal) YAW
-C                                    IGSO(22,26)&MEO(21,25)-ON YAW FOR |BETA|<2DEG
+C                                    GEO(BLKs 63, 67) - ON (Orbit normal) YAW
+C                                    IGSO(62,66)&MEO(61,65)-ON YAW FOR |BETA|<2DEG
 C
 C                      Jan 10, 2017 : GALILEO ECLIPSING ACCORDING TO:
 C
@@ -9984,9 +9996,9 @@ C        SANTXYZ        BODY-X UNIT VECTOR (ITRF)
 C                       WARNING: THE IIA BODY-X ORIENTATION EXPECTED FOR THE IIR
 C        VSVC           SV INERTIAL VELOCIRY VECTOR IN ITRF
 C        BETA           90 DEG + THE SUN ANGLE WITH ORBITAL PLANE(IN RAD)
-C        IBLK           SV BLOCK  1=I, 2=II, 3=IIA, IIR=(4, 5) IIF=6
+C        IBLK           SV BLOCK  1=I, 2=II, 3=IIA, IIR=(4, 5) IIF=6, III=7
 C Jan 10, 2017
-C                                BEI MEO= 21, 25: IGSO= 22, 26: GEO= 23, 27
+C                                BEI MEO= 61, 65: IGSO= 62, 66: GEO= 63, 67
 C        BETAINI        INITIAL (GPS, GLN, GAL) BETA AT TURN START ONLY WHEN
 C                       |BETA| =< 0.07 DEG. (MUST BE EXTERNALLY INITILIZED
 C                       TO ZEROS!)
@@ -10012,13 +10024,13 @@ C        YANGLE      THE NOMINAL YAW ANGLE
 C        PHI         THE ECLIPSING YAW ANGLE            
 C Jan 10, 2017
 C        BETA0       GAL, BEIDOU  ECLIPS BETA LIMIT (= 2, 2.8 DEG)
-C                    = 0 DISABLES GAL AND BEI MEO(BLK 21, 25), 
-C                    IGSO(BLK 22, 26) AND GEO(BLK 23, 27) ECLIPSING 
+C                    = 0 DISABLES GAL AND BEI MEO(BLK 61, 65), 
+C                    IGSO(BLK 62, 66) AND GEO(BLK 63, 67) ECLIPSING 
 C Dec 5, 2017
 C                    FOR BETA0.NE.0 
 C                    BETA0 RECOMPUTED FROM SAT YRATE &  MURATE (=ANOON)
-C                    AND BEI GEO (BLKs 23, 27) ALWAYS USE ON MODE!
-C                    WARNING: BEI MEO(BLK 25) AND IGSO (BLK 26) USE 
+C                    AND BEI GEO (BLKs 63, 67) ALWAYS USE ON MODE!
+C                    WARNING: BEI MEO(BLK 65) AND IGSO (BLK 66) USE 
 C                             GAL  NIGHT/NOON TURNS RATHER THAN ON MODE,
 C                             ALSO INPRN USE GAL NIGHT/NOON TURNS 
 C                             (DO NOT USE INPRN FOR BEIDOU GEO SATs!)
@@ -10120,10 +10132,17 @@ C THE NEW GPS BLK IIF YAW RATES ( DILSSNER (2010) INSIDE GNSS)
       IF( IPRN .LE. 32 .AND. IBLK(IPRN).GT.5 ) YRATE(IPRN)=0.11D0
 C Dec 5, 2017 -start                       USE THE INPUT YAW RATE IF NON ZERO
 C SET BEI IGSO/GEO YRATES CORRESPONDING TO 2.8 DEG BETA LIMIT
-      IF(IBLK(IPRN).EQ.22.OR.IBLK(IPRN).EQ.23.OR.IBLK(IPRN).EQ.26
-     &   .OR.IBLK(IPRN).EQ.27) YRATE(IPRN)= 0.085D0
+c Lahaye : 2019Oct18 : SV block indeces change
+c     IF(IBLK(IPRN).EQ.22.OR.IBLK(IPRN).EQ.23.OR.IBLK(IPRN).EQ.26
+c    &   .OR.IBLK(IPRN).EQ.27) YRATE(IPRN)= 0.085D0
+      IF(IBLK(IPRN).EQ.62.OR.IBLK(IPRN).EQ.63.OR.IBLK(IPRN).EQ.66
+     &   .OR.IBLK(IPRN).EQ.67) YRATE(IPRN)= 0.085D0
+c Lahaye : 2019Oct18 : SV block indeces change
 C AND FOR BEI MEO, TOO, TO BE SURE
-      IF(IBLK(IPRN).EQ.21.OR.IBLK(IPRN).EQ.25) YRATE(IPRN)= 0.158D0
+c Lahaye : 2019Oct18 : SV block indeces change
+c     IF(IBLK(IPRN).EQ.21.OR.IBLK(IPRN).EQ.25) YRATE(IPRN)= 0.158D0
+      IF(IBLK(IPRN).EQ.61.OR.IBLK(IPRN).EQ.65) YRATE(IPRN)= 0.158D0
+c Lahaye : 2019Oct18 : SV block indeces change
 C OR USE THE INPUT YRATE, BUT ONLY IF NON ZERO & REASONABLE
       IF(YRTIN.GT.0.D0.AND.YRTIN.LE.0.3D0) YRATE(IPRN)= YRTIN
 C NON ZERO INPRN MUST BE BEIDOU ONLY (IPRN 101-136)
@@ -10132,12 +10151,15 @@ C FOR BEI MEO/IGSO BLOCKS 25/26 INPRN INVOKES GAL ECLIPSING TURNS
 C BUT ONLY IF INPRN IS ZERO!
 C          ***************WARNING********
 C IT IS ASSUMED/EXPECTED (ACCORDING DILSSNER Nov 2017) THE BEIDOU 3
-C MEO/IGSO (BLKS 25/26) WILL NOT USE ON ECLIPSING and EMPLOY GAL-LIKE YS ECLIPS 
+C MEO/IGSO (BLKS 65/66) WILL NOT USE ON ECLIPSING and EMPLOY GAL-LIKE YS ECLIPS 
 C MODEL. IF THE BEIDOU 3 SATS WILL ALSO USE THE REGULAR BEI. ON ECLIPSING
 C DISABLE (COMMENT/DELETE)THE FOLLOWING 3 LINES,  THEN FOR
-C ANOMALOUS BEI. (IE YS GAL) ECLIPSING SATs, USE INPRN/YRTIN, INSTEAD BLKS 25/26
+C ANOMALOUS BEI. (IE YS GAL) ECLIPSING SATs, USE INPRN/YRTIN, INSTEAD BLKS 65/66
 C          ***************WARNING********
-      IF(IBLK(IPRN).EQ.25.OR.IBLK(IPRN).EQ.26) THEN
+c Lahaye : 2019Oct18 : SV block indeces change
+c     IF(IBLK(IPRN).EQ.25.OR.IBLK(IPRN).EQ.26) THEN
+      IF(IBLK(IPRN).EQ.65.OR.IBLK(IPRN).EQ.66) THEN
+c Lahaye : 2019Oct18 : SV block indeces change
        IF(INPRN.EQ.0) INPRN=IPRN
       END IF
 C Dec 5, 2017 -end
@@ -10279,13 +10301,19 @@ C May 03, 2017 THE ON LIMIT BETADG <= 4 DEG
 C  MEO YS/ON SWITCHING DELTA BETA LIMIT
        BETAE= .52D0
 C  IGSO YS/ON SWITCHING DELTA BETA LIMIT
-       IF(IBLK(IPRN).EQ.22.OR.IBLK(IPRN).EQ.26) BETAE= .97D0
+c Lahaye : 2019Oct18 : SV block indeces change
+c      IF(IBLK(IPRN).EQ.22.OR.IBLK(IPRN).EQ.26) BETAE= .97D0
+       IF(IBLK(IPRN).EQ.62.OR.IBLK(IPRN).EQ.66) BETAE= .97D0
+c Lahaye : 2019Oct18 : SV block indeces change
 C COMPUTE THE ACTUAL BETAE (HERE BETA INCREASE PER 1 REVOLUTION)
        IF((TTAG-ECLSTM(IPRN,1)).NE.0.D0)
      & BETAE= (BETADG-BETAINI(IPRN))/(TTAG-ECLSTM(IPRN,1))*360./MURATE
        BETAE = ABS(BETAE)
 C ON SWITCH FOR SURE FOR GEO (23/27) OR BETAE LIMIT
-       IF(IBLK(IPRN).EQ.23.OR.IBLK(IPRN).EQ.27.OR.ABS(BETADG).LE.(4.1D0-
+c Lahaye : 2019Oct18 : SV block indeces change
+c      IF(IBLK(IPRN).EQ.23.OR.IBLK(IPRN).EQ.27.OR.ABS(BETADG).LE.(4.1D0-
+       IF(IBLK(IPRN).EQ.63.OR.IBLK(IPRN).EQ.67.OR.ABS(BETADG).LE.(4.1D0-
+c Lahaye : 2019Oct18 : SV block indeces change
      &  BETAE)) GO TO 2
 C YS KEPT FOR SURE
        IF(ABS(BETADG).GT.(3.9D0+BETAE)) GO TO 3
@@ -10346,15 +10374,18 @@ C KEEP YS MODE (NO ECLIPSING)
 2       CONTINUE
 C ON MODE
          DO J=1,3
-C BODY-X ON(ORBIT NORMAL YAW) FOR BEIDOU GEO(BLK 23,27) OR FOR
+C BODY-X ON(ORBIT NORMAL YAW) FOR BEIDOU GEO(BLK 63,67) OR FOR
 C |BETA| =< ~ 4 DG (BODYX =>  SAT VELOCITY (YAW PHI=0))
            SANTXYZ(J)= VSVC(J)/sqrt(VSVC(1)**2+VSVC(2)**2+VSVC(3)**2)
           ENDDO
           PHI =  0.D0                       
 C Jul 12, 2017
-        IF (NIGHT.OR. (IBLK(IPRN).NE.23.AND.IBLK(IPRN).NE.27)) THEN
-C BEI ECLIPSE REPORTING: GEO (IBLK 23, 27) NIGHT ONLY
-C                        MEO(21,25) & IGSO(22,26) WHEN IN THE ON MODE
+c Lahaye : 2019Oct18 : SV block indeces change
+c       IF (NIGHT.OR. (IBLK(IPRN).NE.23.AND.IBLK(IPRN).NE.27)) THEN
+        IF (NIGHT.OR. (IBLK(IPRN).NE.63.AND.IBLK(IPRN).NE.67)) THEN
+c Lahaye : 2019Oct18 : SV block indeces change
+C BEI ECLIPSE REPORTING: GEO (IBLK 63, 67) NIGHT ONLY
+C                        MEO(61,65) & IGSO(62,66) WHEN IN THE ON MODE
               write(*,*)"R",IPRN,TTAG,YANGLE, PHI,DET,
      &        BETADG, BETAINI(IPRN) , BETAE
              IECLIPS=1
@@ -16374,7 +16405,7 @@ C
       ELONG= PLZ(2)*180.D0/PI
       DATE = IYR+JDAY/365.25D0
 C
-      CALL igrf12syn (  0,date,    1,HION,colat,elong,x,y,z,BP)
+      CALL igrf13syn (  0,date,    1,HION,colat,elong,x,y,z,BP)
 C FIELD COMPONENTs (nT) x +ve N, y +ve E & Z +ve DOWN /CHANGE UP !           
       Z=-Z
 C
@@ -17927,7 +17958,10 @@ C Copyright (c) 2018 Government of Canada. Under MIT License terms
 C Droit d'auteur (c) Gouvernement du Canada, 2018. Sous termes de Licence MIT
 C
       SUBROUTINE RDCMD( LU, LUO, LUCMD, FNAM, NFREQ, IFMTM, IFMTE, 
-     &                  MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &                  MISCFACTR, MISCFACTP, DATEPO,
+c    &                  MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
      &                  SDP, XRVMRK,XRVVEL,IXRVRNX,ANTH, ICLKSOL,CUTOFF, 
      &                  IDC, IERR, NUCMD, IUCMD, DOPMAX, HDXYZH, DTM, 
      &                  PI, SDCP, SDTROP, CMDLST, ICMD, SMTHCLK, LNG )
@@ -17980,6 +18014,9 @@ C
       REAL*8    HDXYZH(*),XRVMRK(*),DTM(*)
       REAL*8    XRVVEL(*),XRNV, XREV, XRHV
       REAL*8    MISCFACTR, MISCFACTP
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &         , DATEPO
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C
       INTEGER*4     IOPTER(MAXCMD),I,IOP,IOPT,NMOD,NOPTERR,IL,IXRV
      &             ,IR
@@ -17989,6 +18026,9 @@ C
       REAL*8        OPTMIN(MAXCMD)
       REAL*8        OPTMAX(MAXCMD)
       REAL*8    MISCR_FACT, MISCP_FACT
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+     &         , POSEPO
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C
       CHARACTER*80      COMMENT
       CHARACTER*6       CMDI(13,5)
@@ -18177,9 +18217,18 @@ C
      &   MISCFACTP=MISCP_FACT
       DO 130 I=1,3
       XRVVEL(I)= 0.0D0              
-      READ(LUCMD,'(52x,2f15.4)',END=140,ERR=140) OPT(IUCMD(I+15)),
-     &  XRVVEL(I)
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+c     READ(LUCMD,'(52x,2f15.4)',END=140,ERR=140) OPT(IUCMD(I+15)),
+c    &  XRVVEL(I)
+      POSEPO=0.D0
+      READ(LUCMD,'(52x,3f15.4)',END=140,ERR=140) OPT(IUCMD(I+15)),
+     &  XRVVEL(I), POSEPO
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 140   CONTINUE                        
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+      IF( POSEPO .NE. 0.D0 )
+     &  OPT(IUCMD(I+15))=OPT(IUCMD(I+15))+( DATEPO-POSEPO)*XRVVEL(I)
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C sta vel from m/year to m/sec
       XRVVEL(I)= XRVVEL(I)/86400.D0/365.25D0
 130   CONTINUE
@@ -19053,13 +19102,17 @@ C
       REAL*8          FMJD,DT,DTP
       INTEGER*4       POLECONV,IERR
       REAL*8          EPOCH,XMEAN,YMEAN,XRATE,YRATE
+      REAL*8          XSECPOLE,YSECPOLE,XSECRATE,YSECRATE
 C!!
 C!! CHOOSE (UNCOMMENT) ONE OF THE FOLLOWING
 C!!
 C!! Code Beg =============================================================
 C!!   DATA POLECONV/2003/
 C!!   DATA POLECONV/2010/
-      DATA POLECONV/2015/
+C!!   DATA POLECONV/2015/
+      DATA POLECONV,IERR/2019,0/                                        SECULAR POLE IMPLEMENTATION
+      DATA XSECPOLE,YSECPOLE,XSECRATE,YSECRATE
+     &    /55.0D-3,320.5D-3,1.677D-3,3.460D-3/                          PUBLISHED VALUES (@ 2000.0)
 C!! Code End =============================================================
 C
 C
@@ -19093,22 +19146,31 @@ C
       MJD= INT(FMJD+1.d-3) - MJDS
       IF(MJD.GE.0.AND.MJD.LE.1) THEN
         FMJDMP=FMJD
+        IF( POLECONV .NE. 2019 ) THEN
 C COMPUTE MEAN POLE AT INTEGER FMJD AFTER
-        EPOCH=(INT(FMJDMP)+1-51544)/365.25D0+2000.0D0
-        CALL IERS_CMP_2015( POLECONV, EPOCH, XRATE, YRATE, IERR )
-        IF( IERR .LT. 0 ) GOTO 250
+         EPOCH=(INT(FMJDMP)+1-51544)/365.25D0+2000.0D0
+         CALL IERS_CMP_2015( POLECONV, EPOCH, XRATE, YRATE, IERR )
+         IF( IERR .LT. 0 ) GOTO 250
 C COMPUTE MEAN POLE AT INTEGER FMJD BEFORE
-        EPOCH=(INT(FMJDMP)+0-51544)/365.25D0+2000.0D0
-        CALL IERS_CMP_2015( POLECONV, EPOCH, XMEAN, YMEAN, IERR )
-        IF( IERR .LT. 0 ) GOTO 250
-        XRATE=(XRATE-XMEAN)
-        YRATE=(YRATE-YMEAN)
+         EPOCH=(INT(FMJDMP)+0-51544)/365.25D0+2000.0D0
+         CALL IERS_CMP_2015( POLECONV, EPOCH, XMEAN, YMEAN, IERR )
+         IF( IERR .LT. 0 ) GOTO 250
+         XRATE=(XRATE-XMEAN)
+         YRATE=(YRATE-YMEAN)
+        ENDIF
 C COMPUTE MEAN POLE AT FMJD
         EPOCH=(FMJDMP-51544)/365.25D0+2000.0D0
-        CALL IERS_CMP_2015( POLECONV, EPOCH, XMEAN, YMEAN, IERR )
-        IF( IERR .LT. 0 ) GOTO 250
-        IF( IERR .NE. 0 )
+        IF( POLECONV .EQ. 2019 ) THEN
+         XMEAN=XSECPOLE+XSECRATE*(EPOCH-2000.0D0)
+         YMEAN=YSECPOLE+YSECRATE*(EPOCH-2000.0D0)
+         XRATE=XSECRATE/365.25D0
+         YRATE=YSECRATE/365.25D0
+        ELSE
+         CALL IERS_CMP_2015( POLECONV, EPOCH, XMEAN, YMEAN, IERR )
+         IF( IERR .LT. 0 ) GOTO 250
+         IF( IERR .NE. 0 )
      &    WRITE(LUO,*) 'RDERP WARNING: MEAN POLE EXTENSION :',POLECONV
+        ENDIF
         XMPDIF=IX*1.D-6
         YMPDIF=IY*1.D-6
         XMPDRT=IXRT*1.D-6
@@ -19118,6 +19180,7 @@ C COMPUTE MEAN POLE AT FMJD
         XMPDRT=XMPDRT-XRATE
         YMPDRT=YMPDRT-YRATE
         IERP=1
+        GOTO 250
       ENDIF
       GO TO 210
   250 CONTINUE
@@ -20410,20 +20473,33 @@ C INITILIZE FRQ Ant OFFSETS
                IF(RECORD(1:11).EQ."BLOCK IIR-A") IBLK=4
                IF(RECORD(1:11).EQ."BLOCK IIR-B") IBLK=5
                IF(RECORD(1:11).EQ."BLOCK IIR-M") IBLK=5
-               IF(RECORD(1:11).EQ."BLOCK IIF") IBLK=6
+c Lahaye : 2019Oct18 : SV block indeces change
+c              IF(RECORD(1:11).EQ."BLOCK IIF") IBLK=6
+               IF(RECORD(1:9).EQ."BLOCK IIF") IBLK=6
+               IF(RECORD(1:11).EQ."BLOCK IIIA") IBLK=7
+c Lahaye : 2019Oct18 : SV block indeces change
 C
                 IF(RECORD(21:21).EQ."R") THEN 
-                 IF(RECORD(1:11).EQ."GLONASS    ") IBLK=7
-                 IF(RECORD(1:11).EQ."GLONASS-M  ") IBLK=8
-                 IF(RECORD(1:11).EQ."GLONASS-K  ") IBLK=9
+c Lahaye : 2019Oct18 : SV block indeces change
+c                IF(RECORD(1:11).EQ."GLONASS    ") IBLK=7
+c                IF(RECORD(1:11).EQ."GLONASS-M  ") IBLK=8
+c                IF(RECORD(1:11).EQ."GLONASS-K  ") IBLK=9
+                 IF(RECORD(1:11).EQ."GLONASS    ") IBLK=21
+                 IF(RECORD(1:11).EQ."GLONASS-M  ") IBLK=22
+                 IF(RECORD(1:11).EQ."GLONASS-K  ") IBLK=23
+c Lahaye : 2019Oct18 : SV block indeces change
                  READ(RECORD,'(21x,I2)') IPRN
                  IF(IPRN.GT.0.AND.IPRN.LE.32) IPRN=IPRN+32
                 ENDIF
                IF(IPRN.LE.0.AND.IPRN.GT.MAXSAT) GO TO 190
                 IF(RECORD(21:21).EQ."E") THEN
-C GALILEO BLKS > 10
-                 IF(RECORD(1:9).EQ."GALILEO-1") IBLK=11
-                 IF(RECORD(1:9).EQ."GALILEO-2") IBLK=12
+C GALILEO BLKS > 40
+c Lahaye : 2019Oct18 : SV block indeces change
+c                IF(RECORD(1:9).EQ."GALILEO-1") IBLK=11
+c                IF(RECORD(1:9).EQ."GALILEO-2") IBLK=12
+                 IF(RECORD(1:9).EQ."GALILEO-1") IBLK=41
+                 IF(RECORD(1:9).EQ."GALILEO-2") IBLK=42
+c Lahaye : 2019Oct18 : SV block indeces change
                  READ(RECORD,'(21x,I2)') IPRN
                  IF(IPRN.GT.0.AND.IPRN.LE.36) THEN
                   IPRN=IPRN+64
@@ -20433,13 +20509,21 @@ C GALILEO BLKS > 10
                 END IF
 C start :BEIDOUO
                 IF(RECORD(21:21).EQ."C") THEN
-C GALILEO BLKS > 20 M-MEDIUM, I-INCLINED, G-GEOSTAT ORBITS
-                 IF(RECORD(1:9).EQ."BEIDOU-2M") IBLK=21
-                 IF(RECORD(1:9).EQ."BEIDOU-2I") IBLK=22
-                 IF(RECORD(1:9).EQ."BEIDOU-2G") IBLK=23
-                 IF(RECORD(1:9).EQ."BEIDOU-3M") IBLK=25
-                 IF(RECORD(1:9).EQ."BEIDOU-3I") IBLK=26
-                 IF(RECORD(1:9).EQ."BEIDOU-3G") IBLK=27
+C BEIDOU BLKS > 60 M-MEDIUM, I-INCLINED, G-GEOSTAT ORBITS
+c Lahaye : 2019Oct18 : SV block indeces change
+c                IF(RECORD(1:9).EQ."BEIDOU-2M") IBLK=21
+c                IF(RECORD(1:9).EQ."BEIDOU-2I") IBLK=22
+c                IF(RECORD(1:9).EQ."BEIDOU-2G") IBLK=23
+c                IF(RECORD(1:9).EQ."BEIDOU-3M") IBLK=25
+c                IF(RECORD(1:9).EQ."BEIDOU-3I") IBLK=26
+c                IF(RECORD(1:9).EQ."BEIDOU-3G") IBLK=27
+                 IF(RECORD(1:9).EQ."BEIDOU-2M") IBLK=61
+                 IF(RECORD(1:9).EQ."BEIDOU-2I") IBLK=62
+                 IF(RECORD(1:9).EQ."BEIDOU-2G") IBLK=63
+                 IF(RECORD(1:9).EQ."BEIDOU-3M") IBLK=65
+                 IF(RECORD(1:9).EQ."BEIDOU-3I") IBLK=66
+                 IF(RECORD(1:9).EQ."BEIDOU-3G") IBLK=67
+c Lahaye : 2019Oct18 : SV block indeces change
                  READ(RECORD,'(21x,I2)') IPRN
                  IF(IPRN.GT.0.AND.IPRN.LE.36) THEN
                   IPRN=IPRN+100
@@ -20528,7 +20612,10 @@ C SAT ANT PCV FOUND FOR L1/2
                 IF((DANTS(1)+DANTS(2)+DANTS(3)).NE.0.D0.AND.
      &             (DANTS(4)+DANTS(5)+DANTS(6)).NE.0.D0) THEN
 C allow GAL eclips switch by BEI SVB BLK!
-                  IF(ISVBLK(IPRN).NE.25.AND.ISVBLK(IPRN).NE.26)
+c Lahaye : 2019Oct18 : SV block indeces change
+c                 IF(ISVBLK(IPRN).NE.25.AND.ISVBLK(IPRN).NE.26)
+                  IF(ISVBLK(IPRN).NE.65.AND.ISVBLK(IPRN).NE.66)
+c Lahaye : 2019Oct18 : SV block indeces change
      &             ISVBLK(IPRN)= IBLK
                  CALL FREQ12( IPRN, F1, F2, F1S, F2S, F12S, F1ION,
      &            F2ION, AL1, AL2, AL3, AL4 , IFREQ)
@@ -29764,9 +29851,23 @@ C
       BLK(4)='GPS IIR'
       BLK(5)='GPS IIRM'
       BLK(6)='GPS IIF'
-      BLK(7)='GLN I'
-      BLK(8)='GLN M'
-      BLK(9)='GLN K'
+c Lahaye : 2019Oct18 : SV block indeces change
+c     BLK(7)='GLN I'
+c     BLK(8)='GLN M'
+c     BLK(9)='GLN K'
+      BLK(7)='GPS IIIA'
+      BLK(21)='GLN I'
+      BLK(22)='GLN M'
+      BLK(23)='GLN K'
+      BLK(41)='GAL IOV'
+      BLK(42)='GAL I'
+      BLK(61)='BEI MEO2'
+      BLK(62)='BEI INC2'
+      BLK(63)='BEI GEO2'
+      BLK(65)='BEI MEO3'
+      BLK(66)='BEI INC3'
+      BLK(67)='BEI GEO3'
+c Lahaye : 2019Oct18 : SV block indeces change
 C
 C     READ DEFAULT FILE NAMES
 C      
@@ -29790,19 +29891,35 @@ C
 C
       DO IBLK=1,MAXBLK
         DX(IBLK)=0.D0
-      DY(IBLK)=0.D0
-      DZ(IBLK)=0.D0
+        DY(IBLK)=0.D0
+        DZ(IBLK)=0.D0
         NSVBLK(IBLK)=0
       END DO
 C
-      DO IPRN=1,56
-          IDBLK=ISVBLK(IPRN)
-          IF(IPRN.LE.32.AND.IDBLK.GT.6) IDBLK=6
-          IF(IPRN.GT.32..AND.IPRN.LE.64.AND.IDBLK.GT.9) IDBLK=9
+c Lahaye : 2019Oct18 : SV block indeces change
+c     DO IPRN=1,56
+      DO IPRN=1,MAXSAT
+c Lahaye : 2019Oct18 : SV block indeces change
+        IDBLK=ISVBLK(IPRN)
+c Lahaye : 2019Oct18 : SV block indeces change
+c       IF(IPRN.LE.32.AND.IDBLK.GT.6) IDBLK=6
+c       IF(IPRN.GT.32..AND.IPRN.LE.64.AND.IDBLK.GT.9) IDBLK=9
+        IF(IPRN.LE.32.AND.IDBLK.GT.7) IDBLK=7
+        IF(IPRN.GT.32.AND.IPRN.LE.64.AND.IDBLK.GT.23) IDBLK=23
+        IF(IPRN.GT.64.AND.IPRN.LE.100.AND.IDBLK.GT.42) IDBLK=42
+        IF(IPRN.GT.100.AND.IPRN.LE.136.AND.IDBLK.GT.67) IDBLK=67
+c Lahaye : 2019Oct18 : SV block indeces change
         IF (IDBLK .GE. 1) THEN
           NSVBLK(IDBLK)=NSVBLK(IDBLK)+1
           IDSVBLK(IDBLK,NSVBLK(IDBLK))=IPRN
-        IF(IPRN.GT.32.AND.IPRN.LE.64)IDSVBLK(IDBLK,NSVBLK(IDBLK))=IPRN-32
+          IF(IPRN.GT.32.AND.IPRN.LE.64)
+     &                             IDSVBLK(IDBLK,NSVBLK(IDBLK))=IPRN-32
+c Lahaye : 2019Oct18 : SV block indeces change
+          IF(IPRN.GT.64.AND.IPRN.LE.100)
+     &                             IDSVBLK(IDBLK,NSVBLK(IDBLK))=IPRN-64
+          IF(IPRN.GT.100.AND.IPRN.LE.136)
+     &                             IDSVBLK(IDBLK,NSVBLK(IDBLK))=IPRN-100
+c Lahaye : 2019Oct18 : SV block indeces change
           IF (NSVBLK(IDBLK) .EQ. 1) THEN
             DX(IDBLK)=DSVX(IPRN)
             DY(IDBLK)=DSVY(IPRN)
@@ -29865,12 +29982,21 @@ C     Satellite Phase Center Offsets
 C
       WRITE(LPR,1015) SECHDR(2,LNG), IYEARS, IMTHS, IDAYS, SVOHDR(LNG)
       DO IBLK=2,MAXBLK,1
+c Lahaye : 2019Oct18 : SV block indeces change
+       IPRN=0
+       IF( IBLK.GT.20) IPRN=32
+       IF( IBLK.GT.40) IPRN=64
+       IF( IBLK.GT.60) IPRN=100
+c Lahaye : 2019Oct18 : SV block indeces change
        IF( NSVBLK(IBLK) .GT. 0 ) THEN
           WRITE(LPR,1020) BLK(IBLK),IDNINT(DX(IBLK)*1.D3),
      &                    IDNINT(DY(IBLK)*1.D3),IDNINT(DZ(IBLK)*1.D3)
        WRITE(LPR,1022) 'PRNs:',(IDSVBLK(IBLK,J),J=1,NSVBLK(IBLK))
        WRITE(LPR,1022) 'vCLK:',
-     &    (IDNINT(AVCLK(IDSVBLK(IBLK,J))*10),J=1,NSVBLK(IBLK))
+c Lahaye : 2019Oct18 : SV block indeces change
+c    &    (IDNINT(AVCLK(IDSVBLK(IBLK,J))*10),J=1,NSVBLK(IBLK))
+     &    (IDNINT(AVCLK(IPRN+IDSVBLK(IBLK,J))*10),J=1,NSVBLK(IBLK))
+c Lahaye : 2019Oct18 : SV block indeces change
        END IF
       END DO
       IF( NSVBLK(1) .GT. 0 ) THEN
@@ -30416,11 +30542,20 @@ C start BEIDOU
                 SV='C'
                 IR=I-100
 C m - Bedou medium orbit
-                IF(IBLK(I).EQ.21.OR.IBLK(I).EQ.25)IECLIPS='m'
+c Lahaye : 2019Oct18 : SV block indeces change
+c               IF(IBLK(I).EQ.21.OR.IBLK(I).EQ.25)IECLIPS='m'
+                IF(IBLK(I).EQ.61.OR.IBLK(I).EQ.65)IECLIPS='m'
+c Lahaye : 2019Oct18 : SV block indeces change
 C i - Bedou ncline orbit
-                IF(IBLK(I).EQ.22.OR.IBLK(I).EQ.26)IECLIPS='i'
+c Lahaye : 2019Oct18 : SV block indeces change
+c               IF(IBLK(I).EQ.22.OR.IBLK(I).EQ.26)IECLIPS='i'
+                IF(IBLK(I).EQ.62.OR.IBLK(I).EQ.66)IECLIPS='i'
+c Lahaye : 2019Oct18 : SV block indeces change
 C g - Bedou geosyn (stationary)  orbit
-                IF(IBLK(I).EQ.23.OR.IBLK(I).EQ.27)IECLIPS='g'
+c Lahaye : 2019Oct18 : SV block indeces change
+c               IF(IBLK(I).EQ.23.OR.IBLK(I).EQ.27)IECLIPS='g'
+                IF(IBLK(I).EQ.63.OR.IBLK(I).EQ.67)IECLIPS='g'
+c Lahaye : 2019Oct18 : SV block indeces change
              END IF
 C end BEIDOU 
         IF (NOBARC .NE. 0 ) THEN
