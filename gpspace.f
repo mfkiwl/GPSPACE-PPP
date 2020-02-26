@@ -1340,6 +1340,9 @@ C      IF ( ISVEPH .EQ. 2 ) THEN
       CALL FITEPH (LUI, LUO, LPR, LUEPH, NAMEPH, NDAY,
      &             IPC, ISVEPH, C, DTM, XRVMRK, 
      &             NEPSV, IEPSV, NEPTIM, EPHTIM, EPHTBL, IBEFIT, 
+c Lahaye : 2020Feb26 : different degree for different satellites
+     &             ISVN,
+c Lahaye : 2020Feb26 : different degree for different satellites
      &             NPEPSV, IPEPSV, IPEPACC, NPARC, NPDEG, IPEFIT, 
      &             PTB,  PTE, PCX, PCY, PCZ, PDT, ENDTTAG, IULTRA,
      &             IMINACC, IPEPINT, SSVX)
@@ -2482,7 +2485,12 @@ c!       WRITE(*,'(/,1X,A30,/)') 'SORTING PRECISE EPHEMERIS FILE'
           CALL FITEPH (LUI, LUO, LPR, LUEPH, NAMEPH, NDAY, 
      &                 IPC, ISVEPH, C, DTM,
      &                 XRVEPO, NEPSV, IEPSV, NEPTIM, EPHTIM, EPHTBL,
-     &                 IBEFIT, NPEPSV, IPEPSV, IPEPACC, NPARC, NPDEG, 
+c Lahaye : 2020Feb26 : different degree for different satellites
+c    &                 IBEFIT, NPEPSV, IPEPSV, IPEPACC, NPARC, NPDEG, 
+     &                 IBEFIT,
+     &                 ISVN,
+     &                         NPEPSV, IPEPSV, IPEPACC, NPARC, NPDEG, 
+c Lahaye : 2020Feb26 : different degree for different satellites
      &         IPEFIT, PTB, PTE, PCX, PCY, PCZ, PDT, ENDTTAG, IULTRA,
      &             IMINACC, IPEPINT, SSVX)
         END IF
@@ -9250,8 +9258,12 @@ C
      &                      PSB, PSBRMS, WSB, WSBRMS, IODA
         ELSE
           IF( RECORD(1:2).EQ.'WL') THEN   
-51          READ(RECORD,'(4X,I2,2X,I4,4I3,F10.6,6X,E13.6)')
-     &      NECLK,IYEAR,IMTH,IDAY,IHR,IMIN,SEC,CLKRMS       
+c Lahaye : 2020Feb26 : resolving problem with WL E records
+c51          READ(RECORD,'(4X,I2,2X,I4,4I3,F10.6,6X,E13.6)')
+c    &      NECLK,IYEAR,IMTH,IDAY,IHR,IMIN,SEC,CLKRMS       
+51          READ(RECORD(5:240),*)
+     &      NECLK,IYEAR,IMTH,IDAY,IHR,IMIN,SEC,IOS,CLKRMS
+c Lahaye : 2020Feb26 : resolving problem with WL E records
 C Feb 23, 2019
 C disable GAL WL's
 C           IF(PRDC(9,NECLK).EQ.0.D0) 
@@ -9259,13 +9271,19 @@ C           IF(PRDC(9,NECLK).EQ.0.D0)
      &      PRDC(9,NECLK) = CLKRMS*299792458.D0*WLPERIOD
             IF(RECORD(1:4).EQ.'WL E'.AND.PRDC(9,NECLK+64).EQ.0.D0) 
      &      PRDC(9,NECLK+64) = CLKRMS*299792458.D0*WLPERIOD
-            READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
-            IF (RECORD(1:2).EQ.'WL') GO TO 51
-            READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
-            READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
+c Lahaye : 2020Feb26 : general handling of WL records until END OF HEADER
+c           READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
+c           IF (RECORD(1:2).EQ.'WL') GO TO 51
+c           READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
+c           READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
 C Feb 23, 2019
 C ALLOW multiple GNSS WL BLOCKS!
+c           IF (RECORD(1:2).EQ.'WL') GO TO 51
+52          READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
             IF (RECORD(1:2).EQ.'WL') GO TO 51
+            IF (RECORD(61:73).NE.'END OF HEADER') GO TO 52
+            READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
+c Lahaye : 2020Feb26 : general handling of WL records until END OF HEADER
             BACKSPACE(LUCLK)
           ENDIF
           READ(RECORD,1050,ERR=1051)
@@ -9641,6 +9659,9 @@ C
       REAL*8    SECCOR, CLKOS, CLKSD
       CHARACTER*2 CLKTYP
       CHARACTER*4 CLKNAM
+c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
+      CHARACTER*80 RECORD
+c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
 C
       IDATEC=0
       IERR=0
@@ -9684,16 +9705,14 @@ C
      &    IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
      &    SECCOR, CLKOS, CLKSD
          ELSE
-c Lahaye : 2020Feb13 : problem reading this when HDCLX stops at WIDELANE
+c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
 c         READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6,I3,2X,2(1X,E19.12))',
 c    &    ERR=190)
 c    &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
 c    &    SECCOR, NECLK, CLKOS, CLKSD
-          READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6)',
-     &    ERR=190)
-     &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
-     &    SECCOR
-c Lahaye : 2020Feb13 : problem reading this when HDCLX stops at WIDELANE
+          READ(LUCLK,'(A80)', ERR=190) RECORD
+          READ(RECORD(7:80),*, ERR=190) IYCOR, IMCOR, IDCOR
+c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
          END IF
 C
          CALL GPSDC ( IDOY, IYCOR, IMCOR, IDCOR, IWKCOR, IDCOR, 2)
@@ -11178,6 +11197,9 @@ C
       SUBROUTINE FITEPH ( LUI, LUO, LPR, LUPEP, NAMEP, NDAY,
      +                    IPC, IPEP, C, DTM, XRV,
      +                    NEPSV, IEPSV, NEPTIM, EPHTIM, EPHTBL, IBEFIT,
+c Lahaye : 2020Feb26 : different degree for different satellites
+     &                    ISVN,
+c Lahaye : 2020Feb26 : different degree for different satellites
      +                    NPEPSV, IPEPSV, IPEPACC, NBARC, NDEG, IPEFIT, 
      +                    PTB, PTE, PCX, PCY, PCZ, PDT, ENDTTAG, IULTRA,
      +                    IMINACC, IPEPINT , SSVX)
@@ -11225,6 +11247,9 @@ C
       INTEGER*4 NBARC(MAXSAT)
       INTEGER*4 NDEG(MAXSAT,MAXARC)
       INTEGER*4 IPEFIT(MAXSAT,MAXARC)
+c Lahaye : 2020Feb26 : different degree for different satellites
+      INTEGER*4 ISVN(MAXSAT)
+c Lahaye : 2020Feb26 : different degree for different satellites
 C
       REAL*8    C
       REAL*8    DTM(*), XRV(*)
@@ -11405,7 +11430,17 @@ C
           PTB(IPRN,IARC) = IARCTB - 1.D0
           PTE(IPRN,IARC) = IARCTE + 1.D0
           NHOURS=IDINT((PTE(IPRN,IARC)-PTB(IPRN,IARC))/3600.D0)
-          NDEG(IPRN,IARC) = 10 + NHOURS
+C Feb 23, 2019
+C TO ALLOW THE ELLLIPTIC E14, E18 APPROXIMATION
+C         NDEG(IPRN,IARC) = 10 + NHOURS
+c Lahaye : 2020Feb26 : different degree for different satellites
+c         NDEG(IPRN,IARC) = 13 + NHOURS
+          NDEG(IPRN,IARC) = 10
+          IF( ( IPRN .EQ. 78 .AND. ISVN(IPRN) .EQ. 202 ) .OR.
+     &        ( IPRN .EQ. 82 .AND. ISVN(IPRN) .EQ. 201 ) )
+     &    NDEG(IPRN,IARC) = 13
+          NDEG(IPRN,IARC) = NDEG(IPRN,IARC) + NHOURS
+c Lahaye : 2020Feb26 : different degree for different satellites
           NDEG(IPRN,IARC) = MIN(NDEG(IPRN,IARC),MAXDEG)
 C
             IF (IPEFIT(IPRN,IARC) .GT. 1 .OR.
@@ -29909,7 +29944,10 @@ c       IF(IPRN.GT.32..AND.IPRN.LE.64.AND.IDBLK.GT.9) IDBLK=9
         IF(IPRN.GT.64.AND.IPRN.LE.100.AND.IDBLK.GT.42) IDBLK=42
         IF(IPRN.GT.100.AND.IPRN.LE.136.AND.IDBLK.GT.67) IDBLK=67
 c Lahaye : 2019Oct18 : SV block indeces change
-        IF (IDBLK .GE. 1) THEN
+c Lahaye : 2020Feb26 : handling of non observed sats
+c       IF (IDBLK .GE. 1) THEN
+        IF (IDBLK .GT. 1) THEN
+c Lahaye : 2020Feb26 : handling of non observed sats
           NSVBLK(IDBLK)=NSVBLK(IDBLK)+1
           IDSVBLK(IDBLK,NSVBLK(IDBLK))=IPRN
           IF(IPRN.GT.32.AND.IPRN.LE.64)
@@ -29999,10 +30037,36 @@ c    &    (IDNINT(AVCLK(IDSVBLK(IBLK,J))*10),J=1,NSVBLK(IBLK))
 c Lahaye : 2019Oct18 : SV block indeces change
        END IF
       END DO
-      IF( NSVBLK(1) .GT. 0 ) THEN
-       WRITE(LPR,*) '    UNALLOCATED'
-       WRITE(LPR,1022) 'PRNs:',(IDSVBLK(1,J),J=1,NSVBLK(1))
-      END IF
+c Lahaye : 2020Feb26 : handling of non observed sats
+c     IF( NSVBLK(1) .GT. 0 ) THEN
+c      WRITE(LPR,*) '    UNALLOCATED'
+c      WRITE(LPR,1022) 'PRNs:',(IDSVBLK(1,J),J=1,NSVBLK(1))
+c     END IF
+      DO IPRN=1,MAXSAT
+       IF( IPRN .EQ.  1 .OR. IPRN .EQ. 33 .OR.
+     &     IPRN .EQ. 65 .OR. IPRN .EQ. 101 ) NSVBLK(1) = 0 
+       IF ( ISVBLK(IPRN) .EQ. 1) THEN
+c Lahaye : 2020Feb26 : handling of non observed sats
+         NSVBLK(1)=NSVBLK(1)+1
+         IDSVBLK(1,NSVBLK(1))=IPRN
+         IF(IPRN.GT.32.AND.IPRN.LE.64)
+     &     IDSVBLK(1,NSVBLK(1))=IDSVBLK(1,NSVBLK(1))-32
+         IF(IPRN.GT.64.AND.IPRN.LE.100)
+     &     IDSVBLK(1,NSVBLK(1))=IDSVBLK(1,NSVBLK(1))-64
+         IF(IPRN.GT.100.AND.IPRN.LE.136)
+     &     IDSVBLK(1,NSVBLK(1))=IDSVBLK(1,NSVBLK(1))-100
+       END IF
+       IF( (IPRN .EQ.  32 .OR. IPRN .EQ.  64 .OR.
+     &      IPRN .EQ. 100 .OR. IPRN .EQ. 136)
+     &                     .AND. NSVBLK(1) .GT. 0 ) THEN
+         IF( IPRN .EQ. 32 ) WRITE(LPR,*) '    UNALLOCATED GPS'
+         IF( IPRN .EQ. 64 ) WRITE(LPR,*) '    UNALLOCATED GLONASS'
+         IF( IPRN .EQ.100 ) WRITE(LPR,*) '    UNALLOCATED GALILEO'
+         IF( IPRN .EQ.136 ) WRITE(LPR,*) '    UNALLOCATED BEIDOU'
+         WRITE(LPR,1022) 'PRNs:',(IDSVBLK(1,J),J=1,NSVBLK(1))
+       END IF
+      END DO
+c Lahaye : 2020Feb26 : handling of non observed sats
 C
 C     User Antenna Phase Center Offsets 
 C
