@@ -1,11 +1,11 @@
 HDR NOMINAL BEIDOU ANTENNA OFFSETS PER BLK
 HDR         dX(m)   dY(m)   dZ(m)
-BLK BE2  61  0.600   0.0     1.1      MEO
-BLK BE2  62  0.600   0.0     1.1     IGEO
-BLK BE2  63  0.600   0.0     1.1      GEO
-BLK BE3  65  0.600   0.0     1.1      MEO
-BLK BE3  66  0.600   0.0     1.1     IGEO
-BLK BE3  67  0.600   0.0     1.1      GEO
+BLK BE2  61 0.600    0.0      1.1      MEO      
+BLK BE2  62 0.600    0.0      1.1      IGEO     
+BLK BE2  63 0.600    0.0      1.1      GEO      
+BLK BE3  65 0.600    0.0      1.1      MEO      
+BLK BE3  66 0.600    0.0      1.1      IGEO     
+BLK BE3  67 0.600    0.0      1.1      GEO      
 HDR
 HDR45678901234567890123456789012345678901234567890123456789012345678901234567890
 HDR
