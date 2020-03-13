@@ -242,7 +242,9 @@ C
       INTEGER*4 ISVFX
 C     DSGBUF - CLK SIGMA BUF
       REAL*8     DSGBUF(MAXSAT,MAXOBS),DN1,DN2,DN3, AL4                      
-     & , DN12REF,  PRDCREF
+C Feb 23, 2019
+C    & , DN12REF,  PRDCREF
+     & , DN12REF(4),  PRDCREF(4)
       REAL*8     DSPBUF(MAXSAT,MAXOBS)
 C SAT WL DCB IN DSWBUF
       REAL*8     DSWBUF(MAXSAT,MAXOBS)
@@ -296,7 +298,10 @@ C
       REAL*8     CLKBUF(10) , CLKTIM(10)
       REAL*8     SANTXYZ(3)
      &         , TEMPUVX(3), tempuval
-      REAL*8     PCVNEU(6,4),   PCVELV(361,182,4), PCVSAT(MAXSAT,43)
+C Feb 23, 2019
+C     REAL*8     PCVNEU(6,4),   PCVELV(361,182,4), PCVSAT(MAXSAT,43)
+      REAL*8     PCVNEU(6,4),   PCVELV(361,182,4), PCVSAT(MAXSAT,84)
+     &           , DZEN
       REAL*8     HDXYZH(4)
       REAL*8     AIONBRD(4), BIONBRD(4)
       REAL*8     TRFPAR(16)
@@ -491,7 +496,9 @@ C
       INTEGER*4   IPXRELAX
 C     GLNS INTER FREQ RATE/CHANNEL IN NS (FROM RDHDR)
       REAL*8 RIFRATE , DRIFRT, SUMIGF , SRIFRT
-      INTEGER*4 IPRNREF
+C Feb 23, 2019
+C     INTEGER*4 IPRNREF
+      INTEGER*4 IPRNREF(4), JREF(4), JGNSS,  IDD(4)
 C      IPEPINT-  PREC EPH INTERVAL
       INTEGER*4 IPEPINT
       INTEGER*4 IK
@@ -709,7 +716,16 @@ C  WL INT PHASE INIILIZATION AFTER MINFX MIN ONLY!
       MINFX= 30     
       HORDION(19)=1.D-3
       HORDION(19)=1.D-8 
-      IPRNREF=0
+C Feb 23, 2019 - start  (multi GNSS AR)
+C     IPRNREF=0
+       DO i=1,4
+        IPRNREF(I)= 0
+        JREF(I)   = 0
+        IDD(I)    =0
+        DN12REF(I)= 0.0D0
+        PRDCREF(I)= 0.0D0
+       ENDDO 
+c Feb 23, 2019 -end
       DELTARP=0.D0
       DELTAPP=0.D0
       SOLTTAG=0.D0
@@ -962,18 +978,44 @@ C
 C
 C OPEN CNES WSB IN gpsppp.wsb FOR AR IF IT EXIST
 C
+C Feb 23, 2019 - start
+       DO ID=1,4
+       IF (ID.EQ.1) THEN
+C GPS Ws
+        IO= 0 
         OPEN ( LUMET, FILE='gpsppp.wsb', STATUS='OLD',ERR=30)
+       ENDIF
+       IF (ID.EQ.2) THEN
+C GLN WLs
+        IO= 32
+        OPEN ( LUMET, FILE='glnppp.wsb', STATUS='OLD',ERR=30)
+       ENDIF
+       IF (ID.EQ.3) THEN
+C GAL WLs
+        IO= 64
+        OPEN ( LUMET, FILE='galppp.wsb', STATUS='OLD',ERR=30)
+       ENDIF
+       IF (ID.EQ.4) THEN
+C BEI WLs
+        IO=100 
+        OPEN ( LUMET, FILE='beippp.wsb', STATUS='OLD',ERR=30)
+       ENDIF
 10       READ(LUMET,*                           ,ERR=20,END=30)
-     &              J, K, IA, IL, (PRDC(9,I),I=1,32)
+C    &              J, K, IA, IL, (PRDC(9,I),I=1,32)
+     &              J, K, IA, IL, (PRDC(9,I+IO),I=1,36)
+C Feb 23, 2019 - end
          IF(J.EQ.IYEARS.AND.K.EQ.IMTHS.AND.IA.EQ.IDAYS) GO TO 30
 20       GO TO 10
 30      CONTINUE
-        DO I=1,32
+C Feb 23, 2019
+C       DO I=1,32
+        DO I=IO+1,IO+36
          PRDC(8,I)=0.D0
          PRDC(9,I)= PRDC(9,I)*C/(F1-F2)
          PRDC(10,I)=0.D0
         END DO
         CLOSE(LUMET)
+       ENDDO
 C
 C OPEN CNES NSB IN gpsppp.wsb FOR AR IF IT EXIST
 C input NL Sat Biase (NSB) in gpsppp.nsb
@@ -1106,6 +1148,14 @@ C USAGE OF EXTERNAL YAW INFO DISABLED UNTIL FIRM REFERENCE DEFINITION
      &               DSPBUF, DSWBUF,
      &               ITMBUF, AMBBUF, YAWBUF, IODBUF )
       END IF
+C Feb 23, 2019 - scale GAL WL (if available
+       CALL FREQ12(65     , F1, F2, F1S, F2S, F12S, F1ION, F2ION,
+     &                   AL1, AL2, AL3, AL4, IFREQ )
+       DO I=65,100
+C Scale GAL WL according IFREQ (SEE FREQ12)
+        PRDC(9,I)= PRDC(9,I)*AL4/0.86192D0
+c       PRDC(9,I)= 0.0d0                   
+       END DO
 C
 C     SORT MRTCA CORRECTIONS INTO SATELLITE FILES
 C     AND FILL BUFFERS ( ISVCLK=3 )
@@ -1290,6 +1340,9 @@ C      IF ( ISVEPH .EQ. 2 ) THEN
       CALL FITEPH (LUI, LUO, LPR, LUEPH, NAMEPH, NDAY,
      &             IPC, ISVEPH, C, DTM, XRVMRK, 
      &             NEPSV, IEPSV, NEPTIM, EPHTIM, EPHTBL, IBEFIT, 
+c Lahaye : 2020Feb26 : different degree for different satellites
+     &             ISVN,
+c Lahaye : 2020Feb26 : different degree for different satellites
      &             NPEPSV, IPEPSV, IPEPACC, NPARC, NPDEG, IPEFIT, 
      &             PTB,  PTE, PCX, PCY, PCZ, PDT, ENDTTAG, IULTRA,
      &             IMINACC, IPEPINT, SSVX)
@@ -1996,7 +2049,8 @@ C
 C  FORCE NEW AMBS FOR KIN SOLUTION GAP!
 C
          IF(IFITCLK.EQ.2) THEN
-          ICSLIP(I)=1
+C Feb 23, 2019
+c         ICSLIP(I)=1
          ENDIF
         ENDIF
         IF(I.EQ.1.AND.HORDION(10).GT.0.D0) THEN
@@ -2280,6 +2334,10 @@ c!       WRITE(*,*) 'NO CLOCKS, READ NEXT EPOCH'
          END IF
       END IF
         J=0
+C Feb 23, 2019
+        DO I = 1,4
+        JREF(I)= 0
+        ENDDO
        IF(.NOT.IAROFF) THEN
         IAROFF= .TRUE.
         DO I= 1, NSVO
@@ -2294,8 +2352,13 @@ C        AR SWITCHING OFF
           PRDC(8,ISVO(I))= 0.D0
           PRDC(9,ISVO(I))= 0.D0
          ENDIF    
-         IF(ISVO(I).EQ.IPRNREF) J= IPRNREF
+C Feb 23, 2019 -start
+         JGNSS = (ISVO(I)-1)/32+1
+         IF((JGNSS.EQ.4.AND.ISVO(I).LE.100).OR.
+     &      (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
+         IF(ISVO(I).EQ.IPRNREF(JGNSS)) JREF(JGNSS)= IPRNREF(JGNSS)
          IF(FLTSUM(1,ISVO(I)).EQ.1.D0) THEN
+C Feb 23, 2019 - end
       if(ipc.ge.4)write(*,*)
      &    'ARDEBUG: INIT1',uttag,isvo(i),fltsum(20,isvo(i)),
      &    fltsum(21,isvo(i)),fltsum(22,isvo(i)),fltsum(23,isvo(i))
@@ -2325,7 +2388,11 @@ C
      &        CNTSLIP(ISVO(I),IARC(ISVO(I)),ICSLIP15(ISVO(I)))+1
          END IF
         ENDDO
-        IPRNREF = J
+C Feb 23, 2019
+C       IPRNREF = J
+        DO I= 1,4
+         IPRNREF(I) = JREF(I)
+        ENDDO
 C
       CALL TOWHMS( IWKDAY, TTAG(1)               , IHR, IMIN, SEC, 0 )
       CALL GPSDC ( JULD,IYEAR,IMTH,IDAY,IGPSWK,IWKDAY, 4 )
@@ -2418,7 +2485,12 @@ c!       WRITE(*,'(/,1X,A30,/)') 'SORTING PRECISE EPHEMERIS FILE'
           CALL FITEPH (LUI, LUO, LPR, LUEPH, NAMEPH, NDAY, 
      &                 IPC, ISVEPH, C, DTM,
      &                 XRVEPO, NEPSV, IEPSV, NEPTIM, EPHTIM, EPHTBL,
-     &                 IBEFIT, NPEPSV, IPEPSV, IPEPACC, NPARC, NPDEG, 
+c Lahaye : 2020Feb26 : different degree for different satellites
+c    &                 IBEFIT, NPEPSV, IPEPSV, IPEPACC, NPARC, NPDEG, 
+     &                 IBEFIT,
+     &                 ISVN,
+     &                         NPEPSV, IPEPSV, IPEPACC, NPARC, NPDEG, 
+c Lahaye : 2020Feb26 : different degree for different satellites
      &         IPEFIT, PTB, PTE, PCX, PCY, PCZ, PDT, ENDTTAG, IULTRA,
      &             IMINACC, IPEPINT, SSVX)
         END IF
@@ -2769,7 +2841,10 @@ C------------------------------------------------------------------------
 C     COMPUTE EFFECT OF EARTH TIDES
 C------------------------------------------------------------------------
 C
-      IF ( ITER .EQ. 1 ) THEN
+C Sep 28, 2018
+C     IF ( ITER .EQ. 1 ) THEN
+      IF ( ITER.EQ.1.AND.((UTTAG/60.D0-IDINT(UTTAG/60.D0)).LE.1.D-3)  
+     & .OR.ETIDE(1).EQ.0.D0) THEN
         DMJDT = MJD + FMJDDT
         CALL BODYT ( PLHEPO(1), PLHEPO(2), XRVEPO, IYEAR, IMTH, IDAY,
      &               DMJDT,  SIDT, ETIDE(1), ETIDE(2), ETIDE(3) )
@@ -2979,8 +3054,15 @@ c!   &             (TXPEP-PTE(IPRN,IA))/3600,IA,NPARC(IPRN),IPRN
             IF ( ISVCLK .EQ. 2 ) THEN
               SATCOR = PRDC(1,IDX(IPRN))/C
             ELSE
+C Feb 23, 2019  start -  sp3 clk interpolation
             SATCOR =
-     &             PDT(IPRN,IA,IDINT((TXPEP-PTB(IPRN,IA))/IPEPINT)+1)
+     &             PDT(IPRN,IA,IDINT((TXPEP-PTB(IPRN,IA))/IPEPINT)+1) 
+C   
+           SATCOR= SATCOR + (MOD(UTTAG+.001D0,DBLE(IPEPINT))-.001D0)*
+     & (PDT(IPRN,IA,IDINT((TXPEP-PTB(IPRN,IA))/IPEPINT)+2) 
+     & - PDT(IPRN,IA,IDINT((TXPEP-PTB(IPRN,IA))/IPEPINT)+1))/IPEPINT
+C Feb 23, 2019 end   - SP3 clk interpolation
+C
             IF( DABS(SATCOR*1.D6-999999D0) .LT. 1.D0 .OR.
      &                DABS(SATCOR*1.D6-99999D0) .LT. 1.D0 ) THEN
                 IREASON=3
@@ -3391,7 +3473,11 @@ C NADIR ANGLE (DEG)
      &              SQRT(XSV(1)**2+XSV(2)**2+
      &                   XSV(3)**2))*180.0D0/PI
 C ALLOW LEOS ( with ZEN > max DEG encoded in PCVSAT(IPRN,43))
-          IF(ZEN.GT.PCVSAT(IPRN,43)) ZEN=PCVSAT(IPRN,43)
+C Feb 23, 2019
+C         IF(ZEN.GT.PCVSAT(IPRN,43)) ZEN=PCVSAT(IPRN,43)
+          IF(ZEN.GT.PCVSAT(IPRN,83)) ZEN=PCVSAT(IPRN,83)
+          DZEN= 1.D0
+          IF(PCVSAT(IPRN,84).GT.0.0D0) DZEN= PCVSAT(IPRN,84)
           IF(IELV.GT.91) THEN
              IELV=91
              IEL2=182
@@ -3400,9 +3486,15 @@ C ALLOW LEOS ( with ZEN > max DEG encoded in PCVSAT(IPRN,43))
              IEL2=92
           ENDIF
           PCVL1=
-     &     (PCVELV(I,IELV,1)+PCVSAT(IPRN,IDINT(ZEN+.5d0)+ 1))/1.d3
+C Feb 23, 2019 allow 0.5 deg DZEN (DZEN=PCVSAT(IPRN,84)) 
+C    &     (PCVELV(I,IELV,1)+PCVSAT(IPRN,IDINT(ZEN+.5d0)+ 1))/1.d3
+     &     (PCVELV(I,IELV,1)+PCVSAT(IPRN,IDINT((ZEN+.25d0)/DZEN+ 1)))
+     &      /1.d3
           PCVL2=
-     &     (PCVELV(I,IEL2,1)+PCVSAT(IPRN,IDINT(ZEN+.5d0)+21+1))/1.d3
+C Feb 23, 2019
+C    &     (PCVELV(I,IEL2,1)+PCVSAT(IPRN,IDINT(ZEN+.5d0)+21+1))/1.d3
+     &     (PCVELV(I,IEL2,1)+PCVSAT(IPRN,IDINT((ZEN+.25d0)/DZEN+42)))
+     &      /1.d3
 C
           IF ( IFREQ .EQ. 1 ) THEN
            PCVCOR(IDX(IPRN))  = PCVL1
@@ -4509,21 +4601,32 @@ C         IF(IL.NE.0) IPRNREF=ISVOL(IDXO(IL))
 C UNDO:ADAPT SDTROP TO SPEED AND WET ZPD MAGNITUDES (36km/h & 0.2m)
 C
          NAMBFX =0
-         ID = 0
+C Feb 23, 2019
+C        ID = 0
+         DO I= 1, 4
+          IDD(I) = 0
+         ENDDO
          IF(IFREQ.GE.3.AND..NOT.INIEPO.AND.IOBTYP.EQ.2.AND.
      &      (NFIX.GT.0.OR.IDIR.LT.0).AND.
      &          (UPDINT*NFIX/60.).LT.DBLE(MINFX)) THEN                               IF 1 ref search condition
           IF(IPC.GE.1.AND..NOT.IAROFF)
      &                WRITE(*,*) "AR REF SEARCH: LOOK FOR REF SAT"
           DO I= INSVO, NSVO                                                          DO 2 loop AR sat
+C Feb 23, 2019
+         JGNSS = (ISVO(I)-1)/32+1
+         IF((JGNSS.EQ.4.AND.ISVO(I).LE.100).OR.
+     &      (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
            IPRN= ISVO(I)
          CALL FREQ12( IPRN, F1, F2, F1S, F2S, F12S, F1ION, F2ION,
      &                   AL1, AL2, AL3, AL4, IFREQ )
            IF(PRDC(9,IPRN).NE.0.D0.AND..NOT.(
      &         PL(IOBTYP*(I-1)+1,IOBTYP*(I-1)+1)*SDPR**2 .LT. 1.D-20
      &         .OR. PL(IOBTYP*I,IOBTYP*I)*SDCP**2 .LT. 1.D-20 ) ) THEN               IF 3 if AR and ! deweight
-            IF(IDIR.LT.0.AND.IPRN.EQ.IPRNREF.AND.NFIX.EQ.0) THEN                     IF 4 BWD selected at end FWD
-              ID=I
+C Feb 23, 2019
+C           IF(IDIR.LT.0.AND.IPRN.EQ.IPRNREF.AND.NFIX.EQ.0) THEN                     IF 4 BWD selected at end FWD
+            IF(IDIR.LT.0.AND.IPRN.EQ.IPRNREF(JGNSS).AND.NFIX.EQ.0) THEN                     IF 4 BWD selected at end FWD
+C             ID=I
+              IDD(JGNSS) = I
               IF(IPC.GE.1)
      &          WRITE(*,*) "AR REF SELECT: ",IPRN,EL(IDX(IPRN)),
      &          CPAMB(IPRN)
@@ -4531,17 +4634,26 @@ C
              IF(IPC.GE.2)
      &        WRITE(*,*) "AR REF SEARCH: ",IPRN,EL(IDX(IPRN)),
      &        (EL(IDX(IPRN))-FLTSUM(14,IPRN))/FLTINT,CPAMB(IPRN)
-             IF(IDIR.GT.0.AND.(IPRNREF.EQ.0.OR.NFIX.LE.1)) THEN                      IF 5 FWD selection
-              IF(             ID.EQ.0) THEN                                          IF 6 1st sat
-               ID=I
+C Feb 23, 2019
+C            IF(IDIR.GT.0.AND.(IPRNREF.EQ.0.OR.NFIX.LE.1)) THEN                      IF 5 FWD selection
+             IF(IDIR.GT.0.AND.(IPRNREF(JGNSS).EQ.0.OR.NFIX.LE.1)) THEN                      IF 5 FWD selection
+C Feb 23, 2019
+C             IF(             ID.EQ.0) THEN                                          IF 6 1st sat
+C              ID=I
+              IF(    IDD(JGNSS).EQ.0 ) THEN                                        IF 6 1st sat
+               IDD(JGNSS) =I
                IF(IPC.GE.1)
      &          WRITE(*,*) "AR REF SELECT: ",IPRN,EL(IDX(IPRN)),
      &          (EL(IDX(IPRN))-FLTSUM(14,IPRN))/FLTINT
               ELSE IF(FLTSUM(1,ISVO(I)).GT.NFIX.AND.
      &                (EL(IDX(IPRN))-FLTSUM(14,IPRN))/FLTINT .GT.
-     &                  (EL(IDX(ISVO(ID)))-FLTSUM(14,ISVO(ID)))/
+C Feb 23, 2019
+C    &                  (EL(IDX(ISVO(ID)))-FLTSUM(14,ISVO(ID)))/
+     &          (EL(IDX(ISVO(IDD(JGNSS))))-FLTSUM(14,ISVO(IDD(JGNSS))))/
      &                                                  FLTINT) THEN            ELSE IF 6 larger elevation rate
-               ID=I                                                                       on n'th FWD epoch
+C Feb 23, 2019
+C              ID=I                                                                       on n'th FWD epoch
+               IDD(JGNSS)=I                                                                       on n'th FWD epoch
                IF(IPC.GE.1)
      &          WRITE(*,*) "AR REF SELECT: ",IPRN,EL(IDX(IPRN)),
      &          (EL(IDX(IPRN))-FLTSUM(14,IPRN))/OBSINT,CPAMB(IPRN)
@@ -4550,47 +4662,102 @@ C
             ENDIF                                                                END IF 4 if high enough sat
            ENDIF                                                                 END IF 3 if AR and ! deweight
           END DO                                                                 END DO 2 loop AR sat
-          IF( ID .NE. 0 ) THEN                                                       IF 2 if ref selected
-           IPRN=ISVO(ID)
+C Feb 23, 2019
+C         IF( ID .NE. 0 ) THEN                                                       IF 2 if ref selected
+C Feb 23, 2019
+          IF((IDD(1)+IDD(2)+IDD(3)+IDD(4)).NE. 0.0D0.AND.NFIX.NE.0)
+     &      CALL SPIN ( PX, NPAR, MAXPAR2, SINEL, J   )
+          ID =0
+          DO I=1, 4
+          IF( IDD(I) .NE. 0 ) THEN                                                       IF 2 if ref selected
+           IPRN=ISVO(IDD(I))
            IF( NFIX .EQ. 0 ) THEN                                                    IF 3 initial FWD/BWD fix
-            PX(NFPAR+ID,NFPAR+ID)=   1.0D 6
+C Feb 23, 2019
+C           PX(NFPAR+ID,NFPAR+ID)=   1.0D 6
+            PX(NFPAR+IDD(I),NFPAR+IDD(I))=   1.0D 6
             CPAMB(IPRN)= 0.0D0
-            IPRNREF = IPRN
-           ELSE IF( IPRN.NE.IPRNREF ) THEN                                      ELSE IF 3 ref changes
+C Feb 23, 2019
+C           IPRNREF = IPRN
+C          ELSE IF( IPRN.NE.IPRNREF ) THEN                                      ELSE IF 3 ref changes
+            IPRNREF(I    ) = IPRN
+           ELSE IF( IPRN.NE.IPRNREF(I) ) THEN                                      ELSE IF 3 ref changes
             DO J= INSVO, NSVO                                                        DO 4 sdiff amb
 C ACCOUNT FOR NEW AMB REFERENCE
-             IF(ISVO(J).NE.IPRN)CPAMB(ISVO(J))=CPAMB(ISVO(J))
+C Feb 23, 2019 start
+         JGNSS = (ISVO(J)-1)/32+1
+         IF((JGNSS.EQ.4.AND.ISVO(J).LE.100).OR.
+     &      (JGNSS.EQ.5.AND.ISVO(J).LE.136)) JGNSS= JGNSS-1
+C            IF(ISVO(J).NE.IPRN)CPAMB(ISVO(J))=CPAMB(ISVO(J))
+         IF(I.EQ.JGNSS.AND.ISVO(J).NE.IPRN)CPAMB(ISVO(J))=CPAMB(ISVO(J))
      &        -CPAMB(IPRN)
             END DO                                                               END DO 4 sdiff amb
             CPAMB(IPRN)= 0.0D0                                    
-            CALL SPIN ( PX, NPAR, MAXPAR2, SINEL, J   )                                   COVARIANCES
+C Feb 23, 2019
+C           CALL SPIN ( PX, NPAR, MAXPAR2, SINEL, J   )                                   COVARIANCES
             DO IL=1,NPAR                                                             DO 4 loop all parameters
              DO J= NFPAR+1, NPAR                                                     DO 5 loop amb parameters
-              IF(ABS(PX(IL, J)).GT.1.D-14.AND.IL.NE.(NFPAR+ID).AND.
-     &           J.NE.(NFPAR+ID)) THEN                                               IF 6
-               PX(IL, J)= PX(IL, J)-PX( NFPAR+ID,IL)
-               IF(IL.GT.NFPAR) PX(IL, J)= PX(IL,J)-PX(NFPAR+ID,J)+
-     &                          PX(NFPAR+ID,NFPAR+ID)
-               IF(IL.LE.NFPAR) PX(J, IL)= PX(IL, J)
+C Feb 23, 2019 start
+C             IF(ABS(PX(IL, J)).GT.1.D-14.AND.IL.NE.(NFPAR+ID).AND.
+C    &           J.NE.(NFPAR+ID)) THEN                                               IF 6
+              IF(ABS(PX(IL, J)).GT.1.D-14.AND.IL.NE.(NFPAR+IDD(I)).AND.
+     &           J.NE.(NFPAR+IDD(I))) THEN                                               IF 6
+C              PX(IL, J)= PX(IL, J)-PX( NFPAR+ID,IL)
+C              IF(IL.GT.NFPAR) PX(IL, J)= PX(IL,J)-PX(NFPAR+ID,J)+
+C    &                          PX(NFPAR+ID,NFPAR+ID)
+               PX(IL, J)= PX(IL, J)-PX( NFPAR+IDD(I),IL)
+               IF(IL.GT.NFPAR) PX(IL, J)= PX(IL,J)-PX(NFPAR+IDD(I),J)+
+     &                          PX(NFPAR+IDD(I),NFPAR+IDD(I))
+C Feb 23, 2019 -end
               ENDIF                                                              END IF 6
+               IF(IL.LE.NFPAR) PX(J, IL)= PX(IL, J)
              END DO                                                              END DO 5 loop amb parameters
+C Feb 23, 2019
             END DO                                                               END DO 4 loop all parameters
             DO J=1, NPAR                                                             DO 4 loop all parameters
-             PX(NFPAR+ID, J)= 0.D0
-             PX(J, NFPAR+ID)= 0.D0
+C Feb 23, 2019
+C            PX(NFPAR+ID, J)= 0.D0
+C            PX(J, NFPAR+ID)= 0.D0
+             PX(NFPAR+IDD(I), J)= 0.D0
+             PX(J, NFPAR+IDD(I))= 0.D0
             ENDDO                                                                END DO 4 loop all parameters
-            PX(NFPAR+ID,NFPAR+ID)=   1.0D-6
-            CALL SPIN ( PX, NPAR, MAXPAR2, SINEL, J   )                                   WEIGHTS
-            IPRNREF = IPRN
+C Feb 23, 2019
+C           PX(NFPAR+ID,NFPAR+ID)=   1.0D-6
+            PX(NFPAR+IDD(I),NFPAR+IDD(I))=   1.0D-6
+            IF(I.GT.1.AND.ID.NE.0) PX(NFPAR+ID,NFPAR+ID)=   1.0D-6
+C           CALL SPIN ( PX, NPAR, MAXPAR2, SINEL, J   )                                   WEIGHTS
+C Feb 23, 2019
+C           IPRNREF = IPRN
+            IPRNREF(I    ) = IPRN
            ENDIF                                                               END ELSE 3 ref changes
-           ID = IPRN
-           write(*,*)'PRN EL', IPRNREF,EL(IDX(IPRNREF)),CPAMB(IPRNREF),
-     &               ' INI AMB FIXED ' , DIR((1-IDIR)/2+1)
-           GO TO 210
+C Feb 23, 2019
+C          ID = IPRN
+           ID = IDD(I)
+           IDD(I) = IPRN
+C Feb 21, 2019
+C          write(*,*)'PRN EL', IPRNREF,EL(IDX(IPRNREF)),CPAMB(IPRNREF),
+C    &               ' INI AMB FIXED ' , DIR((1-IDIR)/2+1)
+            IF(IPRNREF(I).NE.0)
+     &     write(*,*)'PRN EL', IPRNREF(I),EL(IDX(IPRNREF(I))),
+     &          CPAMB(IPRNREF(I)), ' INI AMB FIXED ' , DIR((1-IDIR)/2+1)
+C Feb 23, 2019
+C          GO TO 210
           ENDIF                                                                  END IF 2 if ref selected
+C Feb 23, 2019
+          ENDDO
+          IF((IDD(1)+IDD(2)+IDD(3)+IDD(4)).NE.0.0D0.AND.NFIX.NE.0) THEN
+            CALL SPIN ( PX, NPAR, MAXPAR2, SINEL, J   )           
+            GO TO 210
+          ENDIF
          END IF                                                                  END IF 1 ref search condifion
          DO I= INSVO, NSVO                                                           DO 1 loop AR sat
          IPRN= ISVO(I)
+C Feb 23, 2019 -start
+         CALL FREQ12( IPRN, F1, F2, F1S, F2S, F12S, F1ION, F2ION,
+     &                   AL1, AL2, AL3, AL4, IFREQ )
+         JGNSS = (ISVO(I)-1)/32+1
+         IF((JGNSS.EQ.4.AND.ISVO(I).LE.100).OR.
+     &      (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
+C Feb 23, 2019 - end
          IF(PRDC(9,IPRN).NE.0.D0.AND. IFREQ.GE.3.AND..NOT.INIEPO.AND.
      &      .NOT.( PL(IOBTYP*(I-1)+1,IOBTYP*(I-1)+1)*SDPR**2 .LT. 1.D-20
      &      .OR.( IOBTYP .EQ. 2 .AND.
@@ -4612,22 +4779,32 @@ C WL INITILIZATION
      &      (dn3-FLTSUM(22,iprn) -PRDC(9,IPRN)/AL4)**2)/16)
           END IF                                                                 END IF   added
 C SAVE INIT REF PRN WL FOR WL DATUM REFERENCE
-          IF(IPRN.EQ.IPRNREF) THEN                                                   IF 3 if ref
+C Feb 23, 2019
+C         IF(IPRN.EQ.IPRNREF) THEN                                                   IF 3 if ref
+          IF(IPRN.EQ.IPRNREF(JGNSS)) THEN                                                   IF 3 if ref
            IF(FLTSUM(1,IPRN).GE.2) THEN                                              IF 4 if filtered
-            ID = IPRN
-            DN12REF= FLTSUM(22,iprn) + PRDC(9,IPRN)/AL4            
-            PRDCREF= PRDC(9,IPRN)
-      if(ipc.ge.1)write(*,*) "AR WL REF INIT:",IPRN,DN12REF
+C Feb 23, 2019
+C           ID = IPRN
+            IDD(JGNSS) = IPRN
+C           DN12REF= FLTSUM(22,iprn) + PRDC(9,IPRN)/AL4            
+C           PRDCREF= PRDC(9,IPRN)
+            DN12REF(JGNSS)= FLTSUM(22,iprn) + PRDC(9,IPRN)/AL4            
+            PRDCREF(JGNSS)= PRDC(9,IPRN)
+      if(ipc.ge.1)write(*,*)"AR WL REF INIT:",IPRN,DN12REF(JGNSS)
 C SAVE FIRST FWD REFERENCE SELECTION
             IF(IDIR.GT.0.AND.NDAY.EQ.1)IPRNFX(NDAY)=IPRN
            ELSE                                                                    ELSE 4 if filtered
       if(ipc.ge.1)write(*,*) "AR REF SAT LOST, SET TO 0",IPRN
-            IPRNREF =0
+C Feb 23, 2019
+C           IPRNREF =0
+            IPRNREF(JGNSS) =0
            ENDIF                                                                 END IF 4 if filtered
           ENDIF                                                                  END IF 3 if ref
 C DO NOT REDO AR ATTEMPTS WHEN REPROCESSING CURRENT EPOCH
           IF( .NOT. ISARDONE ) THEN                                                  IF   added
-          dN3 = FLTSUM(22,iprn)+PRDC(9,IPRN)/AL4 -DN12REF
+C Feb 23, 2019
+C         dN3 = FLTSUM(22,iprn)+PRDC(9,IPRN)/AL4 -DN12REF
+          dN3 = FLTSUM(22,iprn)+PRDC(9,IPRN)/AL4 -DN12REF(JGNSS)
           if(dn3.ne.0.d0.and.
      &       abs(dn3-int(dn3+sign(0.5d0,dn3))).LT.0.24)
      &       dn3=int(dn3+sign(0.5d0,dn3))
@@ -4640,19 +4817,25 @@ C DO NOT REDO AR ATTEMPTS WHEN REPROCESSING CURRENT EPOCH
      &      dn3=dn3 -f2s*INT(DN2+SIGN(.5D0,DN2))*AL2/f12s
           IF(((FLTSUM(1,IPRN)-1)*FLTINT-MINFX*60.D0).LT.UPDINT.AND.
      &       ((FLTSUM(1,IPRN)-1)*FLTINT-MINFX*60.D0).GE.0.D0) THEN                   IF 3 enough time passed
-           IF(IPRN  .NE.IPRNREF) THEN                                                IF 4 ! ref
+C Feb 23, 2019
+C          IF(IPRN  .NE.IPRNREF) THEN                                                IF 4 ! ref
+           IF(IPRN  .NE.IPRNREF(JGNSS)) THEN                                                IF 4 ! ref
             write(*,'(a3,(a),2i3,2f6.1,6F7.3)') DIR((1-IDIR)/2+1),
      &       ' INIT PRN EL dN1 dN2 dN3 AMB dAMB SIG WL' 
      &       ,IPRN,int(el(i)),dn1,dn2,dn3,cpamb(iprn),vcpamb(iprn),SQRT 
      &       (1.D0/PX(NFPAR+I,NFPAR+I)),FLTSUM(22,iprn)+PRDC(9,iprn)/AL4        
-     &       -dn12ref, FLTSUM(23,IPRN)/4
+C Feb 23, 2019
+C    &       -dn12ref, FLTSUM(23,IPRN)/4
+     &       -dn12ref(JGNSS), FLTSUM(23,IPRN)/4
             IF((DN2-DN1).NE.0.D0)DN2= DN1+
      &                                INT(DN2-DN1+SIGN(.5D0,DN2-DN1))
             IF(DN1.NE.0.D0)DN1= INT(DN1+SIGN(.5D0,DN1))
             IF(DN2.NE.0.D0)DN2= INT(DN2+SIGN(.5D0,DN2))
            ENDIF                                                                 END IF 4 ! ref
            DN3=0.D0
-           IF(IPRN.NE.IPRNREF) THEN                                                  IF 4 ! ref
+C Feb 23, 2019
+C          IF(IPRN.NE.IPRNREF) THEN                                                  IF 4 ! ref
+           IF(IPRN.NE.IPRNREF(JGNSS)) THEN                                                  IF 4 ! ref
             IF(DN1.NE.0.D0)
      &        DN3=    f1s*INT(DN1+SIGN(.5D0,DN1))*AL1/f12s
             IF(DN2.NE.0.D0)
@@ -4686,7 +4869,9 @@ C BUT ONLY AFTER MINFX+5 MIN!
 C CHECK THE AMBIGUITIES ONLY WHEN REAL AMB CHANGE < 1mm AND 1/SIG > 100 
             DN1= CPAMB(IPRN)/AL3      
             DN2= INT(DN1+SIGN(.5D0,DN1))
-            IF(ABS(fltsum(22,iprn)+PRDC(9,iprn)/AL4-dn12ref).LT.0.20d0
+C Feb 23, 2019
+C           IF(ABS(fltsum(22,iprn)+PRDC(9,iprn)/AL4-dn12ref).LT.0.20d0
+      IF(ABS(fltsum(22,iprn)+PRDC(9,iprn)/AL4-dn12ref(JGNSS)).LT.0.20d0
 C   use WLavg sig of ,25 cy, NOTE: WLavg sigmas=fltsum(23,iprn)/4
      &       .AND.FLTSUM(23,IPRN).LE.1..AND.ABS(DN1-DN2).LT.0.15D0) THEN             IF 5 NL fixing success
 C IT IS A  NAROW LANE! FIX IT!
@@ -4694,7 +4879,9 @@ C IT IS A  NAROW LANE! FIX IT!
      &        ' NL AR PRN EL dN AMB dAMB SIG WL ',
      &        IPRN,int(el(i)),dn1,cpamb(iprn), vcpamb(iprn), SQRT(     
      &        PX(NFPAR+I,NFPAR+I)),FLTSUM(22,iprn)
-     &                                       +PRDC(9,iprn)/AL4-dn12ref
+C Feb 23, 2019
+C    &                                       +PRDC(9,iprn)/AL4-dn12ref
+     &                                 +PRDC(9,iprn)/AL4-dn12ref(jgnss)
      &        , FLTSUM(23,IPRN)/4
              FLTSUM(13, IPRN)= FLTSUM(13, IPRN)+DN2*AL3
              FLTSUM(20,IPRN)=FLTSUM(20,IPRN)-DN2*AL1
@@ -4713,12 +4900,17 @@ C RESET MEAN RES & COUNT
              GO TO 210
             ELSE                                                                   ELSE 5 NL fixing failure
       if(ipc.ge.1)write(*,*) "AR CANNOT NL FIX:",IPRN,
-     &" DN12 res",ABS(fltsum(22,iprn)+PRDC(9,iprn)/AL4-dn12ref)
+C Feb 21, 2019
+C    &" DN12 res",ABS(fltsum(22,iprn)+PRDC(9,iprn)/AL4-dn12ref)
+     &" DN12 res",ABS(fltsum(22,iprn)+PRDC(9,iprn)/AL4-dn12ref(jgnss))
      &.LT.0.2d0,
      &" WL var",FLTSUM(23,IPRN).LE.1.," DN12 siz",ABS(DN1-DN2).LT.0.15D0
+     & , DN1, DN2
 C DO L3 AR BUT ONLY WHEN WL INTEGER PHASE INITIL. QUESTIONABLE (GE 0.2 WL CY)!
-              IF(ABS(FLTSUM(22,iprn)+PRDC(9,iprn)/AL4-dn12ref)
-     &                                                   .GE..20)THEN                IF 6 L3 fixing conditions
+              IF(ABS(FLTSUM(22,iprn)+PRDC(9,iprn)/AL4-dn12ref(jgnss))
+C Feb 23, 2019 L3 AR only for GPS & GLN
+C    &                                                   .GE..20)THEN                IF 6 L3 fixing conditions
+     &         .GE..20.AND.IPRN.LE.64)THEN                                      IF 6 L3 fixing conditions
                DN3 =  (CPAMB(IPRN)/F2ION/AL1-INT(CPAMB(IPRN)/F2ION/AL1))
                DO J=0,1                                                              DO 7 loop trials
                 DN2 = (SIGN(1.D0,DN3)*J-DN3)/(F1ION*AL2/F2ION/AL1-1.0D0)
@@ -4727,13 +4919,16 @@ C DO L3 AR BUT ONLY WHEN WL INTEGER PHASE INITIL. QUESTIONABLE (GE 0.2 WL CY)!
      &             ABS(INT(DN2+SIGN(.5D0,DN2))).LE.4.AND.
      &             ABS(DN2-DN1).LE.1.5D0.AND. 
      &             ABS(FLTSUM(22,iprn)+PRDC(9,iprn)/AL4-
-     &                                     dn12ref+DN1-DN2).LE..5D0)THEN             IF 8 L3 success!
+C Feb 23, 2019
+c    &                                     dn12ref+DN1-DN2).LE..5D0)THEN             IF 8 L3 success!
+     &                             dn12ref(jGNSS)+DN1-DN2).LE..5D0)THEN             IF 8 L3 success!
 C FIX INT AMB, WITHIN 0.04 CY LIMIT & REOLUTION LIMIT |N2|<=4          
                  write(*,'(a3,(a),2i3,2f5.2,5F7.4)') DIR((1-IDIR)/2+1),
      &            ' L3 AR PRN EL dN1 dN2 AMB dAMB SIG WL',
      &            IPRN,int(el(i)),dn1,dn2,cpamb(iprn),vcpamb(iprn),
      &            SQRT(PX(NFPAR+I,NFPAR+I)),FLTSUM(22,iprn)+PRDC(9,iprn)
-     &            /AL4-dn12ref
+C Feb 23, 2019
+     &            /AL4-dn12ref(JGNSS)
      &            , fltsum(23,iprn)/4
                  DN1= INT(DN1+SIGN(0.5D0,DN1))
                  DN2= INT(DN2+SIGN(0.5D0,DN2))
@@ -4759,7 +4954,10 @@ C FIX INT AMB, WITHIN 0.04 CY LIMIT & REOLUTION LIMIT |N2|<=4
      &" FRAC DN2",ABS(DN2-INT(DN2+SIGN(0.5D0,DN2))).LE.0.04d0,
      &" INT DN2",ABS(INT(DN2+SIGN(0.5D0,DN2))).LE.4,
      &" DN12 siz",ABS(DN2-DN1).LE.1.5D0,
-     &" DN12 res",ABS(FLTSUM(22,iprn)+PRDC(4,iprn)/AL4-dn12ref+DN1-DN2)
+C Feb23, 2019
+C    &" DN12 res",ABS(FLTSUM(22,iprn)+PRDC(4,iprn)/AL4-dn12ref(jgnss)+DN1-DN2)
+     &" DN12 res",ABS(FLTSUM(22,iprn)+PRDC(4,iprn)/AL4-dn12ref(jgnss)+
+     &DN1-DN2)
      &.LE..5D0
                 ENDIF                                                            END IF 8 L3 success!
                ENDDO                                                             END DO 7 loop trials
@@ -4771,6 +4969,7 @@ C FIX INT AMB, WITHIN 0.04 CY LIMIT & REOLUTION LIMIT |N2|<=4
      &" AMBconv:",PX(NFPAR+I,NFPAR+I)*SO.LT.0.4D-04,
      &" ELV:",EL(IDX(IPRN)).GT.10.D0,
      &" TIME:",INT(FLTSUM(1,IPRN)*FLTINT/60.D0).GT.(MINFX+ 5 )
+     & , PX(NFPAR+I,NFPAR+I)*SO
             ENDIF                                                                END IF 4 fixing condition
             CALL SPIN ( PX, NPAR, MAXPAR2, SINEL, J   )                                   WEIGHTS
       else
@@ -4791,15 +4990,33 @@ C DO NOT REDO AR ATTEMPTS WHEN REPROCESSING CURRENT EPOCH
           IF(.NOT.
      &    IAROFF.AND.IFREQ.GE.3) THEN
            NAMBFX = 0
-           ID = 0
+C Feb 23, 2019
+C          ID = 0
+           DO I= 1, 4
+           IDD(I) = 0
+           ENDDO
            DO I=1, NSVO                                                              DO 2 Count fix & ref
+C Feb 23, 219
+            JGNSS = (ISVO(I)-1)/32+1
+            IF((JGNSS.EQ.4.AND.ISVO(I).LE.100).OR.
+     &      (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
             IF(PX(NFPAR+I,NFPAR+I).GE..9 D 6)  NAMBFX= NAMBFX+1
-            IF(ISVO(I).EQ.IPRNREF) ID=IPRNREF
+C Feb 23, 2019 - start
+C           IF(ISVO(I).EQ.IPRNREF) ID=IPRNREF
+            IF(ISVO(I).EQ.IPRNREF(JGNSS)) THEN
+             IDD(JGNSS)=IPRNREF(JGNSS)
+             IPRNREF(JGNSS) = IDD(JGNSS)
+            ENDIF
+C Feb 23, 2019 - end
            ENDDO                                                                 END DO 2 count fix & ref
 C IF ID.NE.0 REF SAT IS UP
-           IPRNREF = ID
+C Feb 23, 2019
+C          IPRNREF = ID
+           do i=1,4
+           IPRNREF(I)= IDD(I)
+           enddo 
            write(*,*)' IPRNREF',IPRNREF,' NO OBS SAT:',NSVO,
-     &    ' AMB FIXED:',NAMBFX, ' = ',100* NAMBFX/NSVO, ' %'
+     &       ' AMB FIXED:',NAMBFX, ' = ',100* NAMBFX/NSVO, ' %'
           ENDIF                                                                  END IF 1 when ar
 C
         SDTROP= SDTROP/SQRT(1.d0+RXVEL/10.d0)*
@@ -5487,6 +5704,10 @@ C DRIFRT - GLN IF RATE DIFF (SUM); SUMIGF - SUM of ABS GLN FCY NO.
         DRIFRT= 0.d0
         SUMIGF= 0.d0
         DO IO=1,NSVO
+C Feb 23, 2019
+            JGNSS = (ISVO(IO)-1)/32+1
+            IF((JGNSS.EQ.4.AND.ISVO(IO).LE.100).OR.
+     &      (JGNSS.EQ.5.AND.ISVO(IO).LE.136)) JGNSS= JGNSS-1
           NRC(ISVO(IO),IARC(ISVO(IO)))=NRC(ISVO(IO),IARC(ISVO(IO)))+1
           IF( PX(NFPAR+IO,NFPAR+IO).GT..9D6 )
      &     NRCFX(ISVO(IO),IARC(ISVO(IO)))=
@@ -5552,7 +5773,9 @@ C
      &            CPAMB(IPRN)+PRIAMB,NEWAMB
      &            ,ION2COR(IDX(IPRN))
      &           ,FLTSUM(16,IPRN),FLTSUM(17,IPRN)
-     & ,fltsum(22,iprn)+PRDC(9,iprn)/AL4 -dn12ref                        
+C Feb 23, 2019
+C    & ,fltsum(22,iprn)+PRDC(9,iprn)/AL4 -dn12ref                        
+     & ,fltsum(22,iprn)+PRDC(9,iprn)/AL4 -dn12ref(jgnss)                        
      &          ,DLOG10(SDPR*DSQRT(PL((IO-1)*IOBTYP+1,(IO-1)*IOBTYP+1)))
 C Compute the running res average
           NCPDF(IPRN, MAXARC)= NCPDF(IPRN, MAXARC)+1
@@ -6166,9 +6389,17 @@ C COMPUTE FWD MEAN RES TO BE APPLIED TO BWD CLKS! (ESSENTIAL FOR AR)
          CNTAMB(J)=0
         END DO
         IF(IPC.GE.1)WRITE(*,*) "AR REF SEARCH: LOOK FOR BWD REF SAT"
-        ID=0
+C Feb 23, 2019
+C       ID=0
+        DO I=1,4
+        IDD(I)=0
+        ENDDO
         IF(UPDEPO) THEN
          DO I=1,NSVO 
+C Feb 23, 2019 -start
+         JGNSS = (ISVO(I)-1)/32+1
+         IF((JGNSS.EQ.4.AND.ISVO(I).LE.100).OR.
+     &      (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
           CNTAMB(ISVO(I))=1
           IF(IPC.GE.2)
      &     WRITE(*,*) "AR REF SEARCH: ",ISVO(I),PX(NFPAR+I,NFPAR+I),
@@ -6176,14 +6407,18 @@ C COMPUTE FWD MEAN RES TO BE APPLIED TO BWD CLKS! (ESSENTIAL FOR AR)
      &    ,CPAMB(ISVO(I))
           IF( PX(NFPAR+I,NFPAR+I).LE.1.D-6 ) THEN
            IF( ID .EQ. 0 ) THEN
-            ID=I
+C Feb 23, 2019
+C           ID=I
+            IDD(JGNSS)=I
             IF(IPC.GE.1)
      &     WRITE(*,*) "AR REF SELECT: ",ISVO(I),PX(NFPAR+I,NFPAR+I),
      &     FLTSUM(1,ISVO(I)),FLTSUM(14,ISVO(I)),FLTSUM(15,ISVO(I))
      &    ,CPAMB(ISVO(I))
            ELSE IF( FLTSUM(1,ISVO(I))*FLTINT/60.D0.GT.MINFX.AND.
      &              ABS(CPAMB(ISVO(I))).LT.ABS(CPAMB(ISVO(ID)))) THEN
-             ID=I
+C Feb 23, 2019
+C            ID=I
+             IDD(JGNSS)=I
             IF(IPC.GE.1)
      &     WRITE(*,*) "AR REF SELECT: ",ISVO(I),PX(NFPAR+I,NFPAR+I),
      &     FLTSUM(1,ISVO(I)),FLTSUM(14,ISVO(I)),FLTSUM(15,ISVO(I))
@@ -6191,24 +6426,37 @@ C COMPUTE FWD MEAN RES TO BE APPLIED TO BWD CLKS! (ESSENTIAL FOR AR)
             ENDIF
            ENDIF
          END DO
-         IF(ID.NE.0) ID=ISVO(ID)
+C Feb 23, 2019
+C        IF(ID.NE.0) ID=ISVO(ID)
+         DO I=1,4
+         IF(IDD(I).NE.0) IDD(I)=ISVO(IDD(I))
+         ENDDO
         ELSE
          DO K=1,NSVOL 
+C Feb 23, 2019 -start
+         JGNSS = (ISVO(K)-1)/32+1
+         IF((JGNSS.EQ.4.AND.ISVO(K).LE.100).OR.
+     &      (JGNSS.EQ.5.AND.ISVO(K).LE.136)) JGNSS= JGNSS-1
            CNTAMB(ISVOL(K))=1
            IF(IPC.GE.2)
      &      WRITE(*,*) "AR REF SEARCH: ",ISVOL(K),PX(NFPAR+K,NFPAR+K),
      &      FLTSUM(1,ISVOL(K)),FLTSUM(14,ISVOL(K)),FLTSUM(15,ISVOL(K))
      &     ,CPAMB(ISVOL(K))
            IF( PX(NFPAR+K,NFPAR+K).LE.1.D-6 ) THEN
-            IF( ID .EQ. 0 ) THEN
-             ID=K
+C Feb 23, 2019
+C           IF( ID .EQ. 0 ) THEN
+            IF( IDD(JGNSS) .EQ. 0 ) THEN
+C            ID=K
+             IDD(JGNSS)=K
              IF(IPC.GE.1)
      &     WRITE(*,*) "AR REF SELECT: ",ISVOL(K),PX(NFPAR+K,NFPAR+K),
      &     FLTSUM(1,ISVOL(K)),FLTSUM(14,ISVOL(K)),FLTSUM(15,ISVOL(K))
      &     ,CPAMB(ISVOL(K))
             ELSE IF( FLTSUM(1,ISVOL(K))*FLTINT/60.D0.GT.MINFX.AND.
      &               ABS(CPAMB(ISVOL(K))).LT.ABS(CPAMB(ISVOL(ID)))) THEN
-             ID=K
+C Feb 23, 2019
+C            ID=K
+             IDD(JGNSS)=K
              IF(IPC.GE.1)
      &     WRITE(*,*) "AR REF SELECT: ",ISVOL(K),PX(NFPAR+K,NFPAR+K),
      &     FLTSUM(1,ISVOL(K)),FLTSUM(14,ISVOL(K)),FLTSUM(15,ISVOL(K))
@@ -6216,12 +6464,23 @@ C COMPUTE FWD MEAN RES TO BE APPLIED TO BWD CLKS! (ESSENTIAL FOR AR)
             ENDIF
            ENDIF
          END DO
-         IF(ID.NE.0) ID=ISVOL(ID)
+C Feb 23, 2019
+C        IF(ID.NE.0) ID=ISVOL(ID)
+         DO K=1,4
+         IF(IDD(K).NE.0) IDD(K)=ISVOL(IDD(K))
+         ENDDO
         ENDIF
-        IF( ID .NE. 0 ) THEN
-         IPRNREF=ID
-         IF(IPC.EQ.1) write(*,*)' SELECTING REF SAT FOR BWD: ', IPRNREF
+C Feb 23, 2019
+C       IF( ID .NE. 0 ) THEN
+        DO K= 1, 4
+        IF( IDD(K) .NE. 0 ) THEN
+C Feb 23, 2019
+C        IPRNREF=ID
+         IPRNREF(K    )=IDD(K)
+C        IF(IPC.EQ.1) write(*,*)' SELECTING REF SAT FOR BWD: ', IPRNREF
+         IF(IPC.EQ.1) write(*,*)' SELECTING REF SAT FOR BWD: ', ID     
         ENDIF
+        ENDDO
 c!    write(*,*) 'going to 89'
         GO TO 89
       ELSE
@@ -6376,7 +6635,9 @@ C
      &            46X,'(nsec)     (nsec/hr)  (hr:mn:sec)             ')
   820 FORMAT( 3(2X,I2,2X),1X,I4,2X,1X,7X,2(I2,':'), F4.1,3X, 2F11.2,5X,
      &            2(I2,':'),F4.1 )
-  900 FORMAT( /,1X,I4,2('/',I2), 1X,2(I2,':'), F6.3 ,1X,'PRNS # ',36I6)
+C Feb 25, 2020
+C 900 FORMAT( /,1X,I4,2('/',I2), 1X,2(I2,':'), F6.3 ,1X,'PRNS # ',36I6)
+  900 FORMAT( /,1X,I4,2('/',I2), 1X,2(I2,':'), F6.3 ,1X,'PRNS # ',40I6)
  1000 FORMAT( ' EPHEMERIS TIME  (hr:mn) ',7X,10(1X,I2,':',I2) )
  1135 FORMAT( ' RANGE CORRECTION   (m.) ',7X,10F6.1 )
  1138 FORMAT( ' SV MISMATCH EFFECT (m.) ',7X,10F6.1 )
@@ -8999,14 +9260,32 @@ C
      &                      PSB, PSBRMS, WSB, WSBRMS, IODA
         ELSE
           IF( RECORD(1:2).EQ.'WL') THEN   
-51          READ(RECORD,'(4X,I2,2X,I4,4I3,F10.6,6X,E13.6)')
-     &      NECLK,IYEAR,IMTH,IDAY,IHR,IMIN,SEC,CLKRMS       
-            IF(PRDC(9,NECLK).EQ.0.D0) 
+c Lahaye : 2020Feb26 : resolving problem with WL E records
+c51          READ(RECORD,'(4X,I2,2X,I4,4I3,F10.6,6X,E13.6)')
+c    &      NECLK,IYEAR,IMTH,IDAY,IHR,IMIN,SEC,CLKRMS       
+51          READ(RECORD(5:240),*)
+     &      NECLK,IYEAR,IMTH,IDAY,IHR,IMIN,SEC,IOS,CLKRMS
+c Lahaye : 2020Feb26 : resolving problem with WL E records
+C Feb 23, 2019
+C disable GAL WL's
+C           IF(PRDC(9,NECLK).EQ.0.D0) 
+            IF(RECORD(1:4).EQ.'WL G'.AND.PRDC(9,NECLK).EQ.0.D0) 
      &      PRDC(9,NECLK) = CLKRMS*299792458.D0*WLPERIOD
-            READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
+            IF(RECORD(1:4).EQ.'WL E'.AND.PRDC(9,NECLK+64).EQ.0.D0) 
+     &      PRDC(9,NECLK+64) = CLKRMS*299792458.D0*WLPERIOD
+c Lahaye : 2020Feb26 : general handling of WL records until END OF HEADER
+c           READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
+c           IF (RECORD(1:2).EQ.'WL') GO TO 51
+c           READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
+c           READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
+C Feb 23, 2019
+C ALLOW multiple GNSS WL BLOCKS!
+c           IF (RECORD(1:2).EQ.'WL') GO TO 51
+52          READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
             IF (RECORD(1:2).EQ.'WL') GO TO 51
+            IF (RECORD(61:73).NE.'END OF HEADER') GO TO 52
             READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
-            READ(LUCLK,'(A240)',ERR=45,END=600) RECORD
+c Lahaye : 2020Feb26 : general handling of WL records until END OF HEADER
             BACKSPACE(LUCLK)
           ENDIF
           READ(RECORD,1050,ERR=1051)
@@ -9382,6 +9661,9 @@ C
       REAL*8    SECCOR, CLKOS, CLKSD
       CHARACTER*2 CLKTYP
       CHARACTER*4 CLKNAM
+c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
+      CHARACTER*80 RECORD
+c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
 C
       IDATEC=0
       IERR=0
@@ -9425,16 +9707,14 @@ C
      &    IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
      &    SECCOR, CLKOS, CLKSD
          ELSE
-c Lahaye : 2020Feb13 : problem reading this when HDCLX stops at WIDELANE
+c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
 c         READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6,I3,2X,2(1X,E19.12))',
 c    &    ERR=190)
 c    &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
 c    &    SECCOR, NECLK, CLKOS, CLKSD
-          READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6)',
-     &    ERR=190)
-     &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
-     &    SECCOR
-c Lahaye : 2020Feb13 : problem reading this when HDCLX stops at WIDELANE
+          READ(LUCLK,'(A80)', ERR=190) RECORD
+          READ(RECORD(7:80),*, ERR=190) IYCOR, IMCOR, IDCOR
+c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
          END IF
 C
          CALL GPSDC ( IDOY, IYCOR, IMCOR, IDCOR, IWKCOR, IDCOR, 2)
@@ -10919,6 +11199,9 @@ C
       SUBROUTINE FITEPH ( LUI, LUO, LPR, LUPEP, NAMEP, NDAY,
      +                    IPC, IPEP, C, DTM, XRV,
      +                    NEPSV, IEPSV, NEPTIM, EPHTIM, EPHTBL, IBEFIT,
+c Lahaye : 2020Feb26 : different degree for different satellites
+     &                    ISVN,
+c Lahaye : 2020Feb26 : different degree for different satellites
      +                    NPEPSV, IPEPSV, IPEPACC, NBARC, NDEG, IPEFIT, 
      +                    PTB, PTE, PCX, PCY, PCZ, PDT, ENDTTAG, IULTRA,
      +                    IMINACC, IPEPINT , SSVX)
@@ -10966,6 +11249,9 @@ C
       INTEGER*4 NBARC(MAXSAT)
       INTEGER*4 NDEG(MAXSAT,MAXARC)
       INTEGER*4 IPEFIT(MAXSAT,MAXARC)
+c Lahaye : 2020Feb26 : different degree for different satellites
+      INTEGER*4 ISVN(MAXSAT)
+c Lahaye : 2020Feb26 : different degree for different satellites
 C
       REAL*8    C
       REAL*8    DTM(*), XRV(*)
@@ -11146,7 +11432,17 @@ C
           PTB(IPRN,IARC) = IARCTB - 1.D0
           PTE(IPRN,IARC) = IARCTE + 1.D0
           NHOURS=IDINT((PTE(IPRN,IARC)-PTB(IPRN,IARC))/3600.D0)
-          NDEG(IPRN,IARC) = 10 + NHOURS
+C Feb 23, 2019
+C TO ALLOW THE ELLLIPTIC E14, E18 APPROXIMATION
+C         NDEG(IPRN,IARC) = 10 + NHOURS
+c Lahaye : 2020Feb26 : different degree for different satellites
+c         NDEG(IPRN,IARC) = 13 + NHOURS
+          NDEG(IPRN,IARC) = 10
+          IF( ( IPRN .EQ. 78 .AND. ISVN(IPRN) .EQ. 202 ) .OR.
+     &        ( IPRN .EQ. 82 .AND. ISVN(IPRN) .EQ. 201 ) )
+     &    NDEG(IPRN,IARC) = 13
+          NDEG(IPRN,IARC) = NDEG(IPRN,IARC) + NHOURS
+c Lahaye : 2020Feb26 : different degree for different satellites
           NDEG(IPRN,IARC) = MIN(NDEG(IPRN,IARC),MAXDEG)
 C
             IF (IPEFIT(IPRN,IARC) .GT. 1 .OR.
@@ -20054,7 +20350,9 @@ C
       END IF
       IF( LANTNAM .LT. 16 ) LANTNAM=16
       DO J=1, MAXSAT
-       DO I=1,43
+C Feb 23, 2019
+C      DO I=1,43
+       DO I=1,84
         PCVSAT(J,I)=0.D0
        END DO
       END DO
@@ -20281,15 +20579,22 @@ C
 C 
 C DZEN must be 1deg
 C
-                    IF(DZEN.NE.1.d0) THEN 
+C Feb 23, 2019  allow 0.5 deg DZEN
+C                   IF(DZEN.NE.1.d0) THEN 
+                    IF(DZEN.LT.0.5d0) THEN 
 C DZEN TOO SMALL FOR DIMENSIONING PCVSAT, CHNG COL DIMENSION 
                      WRITE(*,*) "DZEN.LT. 1 DEG, SAT PCV IGNORED"
                      GOTO 190
                     ENDIF
                   IL= INT(ZEN2/DZEN+1.1)
                   IF= INT(ZEN1/DZEN+1.1)
-                  PCVSAT(IPRN,43) = ZEN2
-              IF( IL-IF .GT. 20 ) THEN
+C Feb 23, 2019
+C                 PCVSAT(IPRN,43) = ZEN2
+                  PCVSAT(IPRN,83) = ZEN2
+                  PCVSAT(IPRN,84) = DZEN
+C Feb 23, 2019
+C             IF( IL-IF .GT. 20 ) THEN
+              IF( IL-IF .GT. 40 ) THEN
                      WRITE(*,*) "TOO MANY VALUES, SAT PCV IGNORED"
                      GOTO 190
               END IF
@@ -20334,7 +20639,9 @@ C USE BEIDOU B2 (RNX3 CODE = 7) FOR L2
      &                                       J=(i-1)*3+1,(i-1)*3+3) 
 C NOAZIM PCV only
                    READ(LUPCV,'(8x,19f8.2)',ERR=600)
-     &                                (PCVSAT(IPRN,(i-1)*21+J) ,J=IF,IL)
+C Feb 23, 2019
+C    &                                (PCVSAT(IPRN,(i-1)*21+J) ,J=IF,IL)
+     &                                (PCVSAT(IPRN,(i-1)*41+J) ,J=IF,IL)
                   ENDIF
                 IF(I.EQ.1. AND.(DANTS(4)+DANTS(5)+DANTS(6)).EQ.0.D0) 
      &             GO TO 201
@@ -28798,33 +29105,33 @@ C     SESSION CLOCK RECORD
 C
 c!    write(*,*) 'RAVGALL' , RAVGALL
       IF( CLKRMS .GT. 0 )
-     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, OFFSET,
+     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, OFFSET,
      &      SDOFF, DRIFT*DAYSEC,SDRIFT*DAYSEC, CLKRMS*ONSM, MJD
-     &     ,'GPS', CLK
+     &     ,'GPS'
       IF( RCLKRMS .GT. 0 )
-     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, ROFFSET,
+     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, ROFFSET,
      &      RSDOFF, RDRIFT*DAYSEC,RSDRIFT*DAYSEC, RCLKRMS*ONSM, MJD
-     &     ,'GLONASS', CLK, 'IFDCB', RIFRATE, SRIFRT, 'NS/CH'
+     &     ,'GLONASS', 'IFDCB', RIFRATE, SRIFRT, 'NS/CH'
       IF( ECLKRMS .GT. 0 )
-     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, EOFFSET,
+     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, EOFFSET,
      &      ESDOFF, EDRIFT*DAYSEC,ESDRIFT*DAYSEC, ECLKRMS*ONSM, MJD
-     &     ,'GALILEO', CLK
+     &     ,'GALILEO'
       IF( CCLKRMS .GT. 0 )
-     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, COFFSET,
+     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, COFFSET,
      &      CSDOFF, CDRIFT*DAYSEC,CSDRIFT*DAYSEC, CCLKRMS*ONSM, MJD
-     &     ,'BEIDOU', CLK
+     &     ,'BEIDOU'
       IF( DFCLKRMS .GT. 0 )
-     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, DFOFFSET,
+     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, DFOFFSET,
      &      DFSDOFF, DFDRIFT*DAYSEC,DFSDRIFT*DAYSEC, DFCLKRMS*ONSM, MJD
-     &     ,'GLN-GPS', CLK
+     &     ,'GLN-GPS'
       IF( DECLKRMS .GT. 0 )
-     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, DEOFFSET,
+     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, DEOFFSET,
      &      DESDOFF, DEDRIFT*DAYSEC,DESDRIFT*DAYSEC, DECLKRMS*ONSM, MJD
-     &     ,'GAL-GPS', CLK
+     &     ,'GAL-GPS'
       IF( DCCLKRMS .GT. 0 )
-     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, DCOFFSET,
+     &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, DCOFFSET,
      &      DCSDOFF, DCDRIFT*DAYSEC,DCSDRIFT*DAYSEC, DCCLKRMS*ONSM, MJD
-     &     ,'BEI-GPS', CLK
+     &     ,'BEI-GPS'
 C
 C------------------------------------------------------------------------
 C     FORMAT STATEMENTS
@@ -28844,8 +29151,8 @@ C
  1300 FORMAT(5X,A35)
  1400 FORMAT(/,5X,A60)
  1410 FORMAT(5X,A78)
- 1440 FORMAT ( A3,1X,A4,1X,I4,'/',I2.2,'/',I2.2,1X,2(1X,F12.2,1X,F6.2),
-     &         1X, F5.3,1X,I10,1X,A7,1X,A5,1X,A5,2F6.2,1X,A5)
+ 1440 FORMAT ( A3,1X,A4,1X,I4,'/',I2.2,'/',I2.2,1X,A5,1X,
+     &     2(1X,F12.2,1X,F6.2), 1X, F5.3,1X,I10,1X,A7,1X,A5,2F6.2,1X,A5)
       RETURN
       END
 C2345678901234567890123456789012345678901234567890123456789012345678901234567890
@@ -29639,7 +29946,10 @@ c       IF(IPRN.GT.32..AND.IPRN.LE.64.AND.IDBLK.GT.9) IDBLK=9
         IF(IPRN.GT.64.AND.IPRN.LE.100.AND.IDBLK.GT.42) IDBLK=42
         IF(IPRN.GT.100.AND.IPRN.LE.136.AND.IDBLK.GT.67) IDBLK=67
 c Lahaye : 2019Oct18 : SV block indeces change
-        IF (IDBLK .GE. 1) THEN
+c Lahaye : 2020Feb26 : handling of non observed sats
+c       IF (IDBLK .GE. 1) THEN
+        IF (IDBLK .GT. 1) THEN
+c Lahaye : 2020Feb26 : handling of non observed sats
           NSVBLK(IDBLK)=NSVBLK(IDBLK)+1
           IDSVBLK(IDBLK,NSVBLK(IDBLK))=IPRN
           IF(IPRN.GT.32.AND.IPRN.LE.64)
@@ -29729,10 +30039,36 @@ c    &    (IDNINT(AVCLK(IDSVBLK(IBLK,J))*10),J=1,NSVBLK(IBLK))
 c Lahaye : 2019Oct18 : SV block indeces change
        END IF
       END DO
-      IF( NSVBLK(1) .GT. 0 ) THEN
-       WRITE(LPR,*) '    UNALLOCATED'
-       WRITE(LPR,1022) 'PRNs:',(IDSVBLK(1,J),J=1,NSVBLK(1))
-      END IF
+c Lahaye : 2020Feb26 : handling of non observed sats
+c     IF( NSVBLK(1) .GT. 0 ) THEN
+c      WRITE(LPR,*) '    UNALLOCATED'
+c      WRITE(LPR,1022) 'PRNs:',(IDSVBLK(1,J),J=1,NSVBLK(1))
+c     END IF
+      DO IPRN=1,MAXSAT
+       IF( IPRN .EQ.  1 .OR. IPRN .EQ. 33 .OR.
+     &     IPRN .EQ. 65 .OR. IPRN .EQ. 101 ) NSVBLK(1) = 0 
+       IF ( ISVBLK(IPRN) .EQ. 1) THEN
+c Lahaye : 2020Feb26 : handling of non observed sats
+         NSVBLK(1)=NSVBLK(1)+1
+         IDSVBLK(1,NSVBLK(1))=IPRN
+         IF(IPRN.GT.32.AND.IPRN.LE.64)
+     &     IDSVBLK(1,NSVBLK(1))=IDSVBLK(1,NSVBLK(1))-32
+         IF(IPRN.GT.64.AND.IPRN.LE.100)
+     &     IDSVBLK(1,NSVBLK(1))=IDSVBLK(1,NSVBLK(1))-64
+         IF(IPRN.GT.100.AND.IPRN.LE.136)
+     &     IDSVBLK(1,NSVBLK(1))=IDSVBLK(1,NSVBLK(1))-100
+       END IF
+       IF( (IPRN .EQ.  32 .OR. IPRN .EQ.  64 .OR.
+     &      IPRN .EQ. 100 .OR. IPRN .EQ. 136)
+     &                     .AND. NSVBLK(1) .GT. 0 ) THEN
+         IF( IPRN .EQ. 32 ) WRITE(LPR,*) '    UNALLOCATED GPS'
+         IF( IPRN .EQ. 64 ) WRITE(LPR,*) '    UNALLOCATED GLONASS'
+         IF( IPRN .EQ.100 ) WRITE(LPR,*) '    UNALLOCATED GALILEO'
+         IF( IPRN .EQ.136 ) WRITE(LPR,*) '    UNALLOCATED BEIDOU'
+         WRITE(LPR,1022) 'PRNs:',(IDSVBLK(1,J),J=1,NSVBLK(1))
+       END IF
+      END DO
+c Lahaye : 2020Feb26 : handling of non observed sats
 C
 C     User Antenna Phase Center Offsets 
 C
@@ -29820,7 +30156,9 @@ C
      &     WRITE(LPR,1033) IPRN, DSVX(IPRN)*1.d3, DSVY(IPRN)*1.d3,
      &              DSVZ(IPRN)*1.d3,
      &              ISVBLK(IPRN),'L1',(IDNINT(PCVSAT(IPRN,I)),I=1,15),
-     &              ISVBLK(IPRN),'L2',(IDNINT(PCVSAT(IPRN,I+21)),I=1,15)
+C Feb 23, 2019
+C    &              ISVBLK(IPRN),'L2',(IDNINT(PCVSAT(IPRN,I+21)),I=1,15)
+     &              ISVBLK(IPRN),'L2',(IDNINT(PCVSAT(IPRN,I+41)),I=1,15)
          ENDIF
         END DO
       ELSE
@@ -30392,11 +30730,18 @@ C
       END DO
 C
       FIX1=0
-      IF( NARALL(1)+NARALL(2) .GT. 0 )
-     & FIX1=(100*(NAFXALL(1)+NAFXALL(2)))/(NARALL(1)+NARALL(2))
+C Feb 23, 2019
+C     IF( NARALL(1)+NARALL(2) .GT. 0 )
+C    & FIX1=(100*(NAFXALL(1)+NAFXALL(2)))/(NARALL(1)+NARALL(2))
+      IF( NARALL(1)+NARALL(2)+NARALL(3) .GT. 0 )
+     & FIX1=(100*(NAFXALL(1)+NAFXALL(2)+NAFXALL(3)))/
+     &      (NARALL(1)+NARALL(2)+NARALL(3))
       FIX2=0
-      IF( NOBALL(1)+NOBALL(2) .GT. 0 ) 
-     & FIX2=(100*(NOFXALL(1)+NOFXALL(2)))/(NOBALL(1)+NOBALL(2))
+C     IF( NOBALL(1)+NOBALL(2) .GT. 0 ) 
+C    & FIX2=(100*(NOFXALL(1)+NOFXALL(2)))/(NOBALL(1)+NOBALL(2))
+      IF( NOBALL(1)+NOBALL(2)+NOBALL(3) .GT. 0 ) 
+     & FIX2=(100*(NOFXALL(1)+NOFXALL(2)+NOFXALL(3)))/
+     &      (NOBALL(1)+NOBALL(2)+NOBALL(3))
       WRITE(LSES,1405) 'SES',STNA,IYEARS,IMTHS,IDAYS,
      &      IHRS,IMINS,INT(SECS),SECS-INT(SECS),
      &      IYEARE,IMTHE,IDAYE,
