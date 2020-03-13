@@ -6635,7 +6635,9 @@ C
      &            46X,'(nsec)     (nsec/hr)  (hr:mn:sec)             ')
   820 FORMAT( 3(2X,I2,2X),1X,I4,2X,1X,7X,2(I2,':'), F4.1,3X, 2F11.2,5X,
      &            2(I2,':'),F4.1 )
-  900 FORMAT( /,1X,I4,2('/',I2), 1X,2(I2,':'), F6.3 ,1X,'PRNS # ',36I6)
+C Feb 25, 2020
+C 900 FORMAT( /,1X,I4,2('/',I2), 1X,2(I2,':'), F6.3 ,1X,'PRNS # ',36I6)
+  900 FORMAT( /,1X,I4,2('/',I2), 1X,2(I2,':'), F6.3 ,1X,'PRNS # ',40I6)
  1000 FORMAT( ' EPHEMERIS TIME  (hr:mn) ',7X,10(1X,I2,':',I2) )
  1135 FORMAT( ' RANGE CORRECTION   (m.) ',7X,10F6.1 )
  1138 FORMAT( ' SV MISMATCH EFFECT (m.) ',7X,10F6.1 )
