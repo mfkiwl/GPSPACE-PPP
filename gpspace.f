@@ -9713,7 +9713,7 @@ c    &    ERR=190)
 c    &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
 c    &    SECCOR, NECLK, CLKOS, CLKSD
           READ(LUCLK,'(A80)', ERR=190) RECORD
-          READ(RECORD(7:80),*, ERR=190) IYCOR, IMCOR, IDCOR
+          READ(RECORD(8:80),*, ERR=190) IYCOR, IMCOR, IDCOR
 c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
          END IF
 C
