@@ -1,4 +1,4 @@
-C2345678901234567890123456789012345678901234567890123456789012345678901234567890
+C12345678901234567890123456789012345678901234567890123456789012345678901234567890
 C
 C     NAME:  GPSPACE
 C
@@ -300,7 +300,10 @@ C
      &         , TEMPUVX(3), tempuval
 C Feb 23, 2019
 C     REAL*8     PCVNEU(6,4),   PCVELV(361,182,4), PCVSAT(MAXSAT,43)
-      REAL*8     PCVNEU(6,4),   PCVELV(361,182,4), PCVSAT(MAXSAT,84)
+C Mar 23, 2020
+C     REAL*8     PCVNEU(6,4),   PCVELV(361,182,4), PCVSAT(MAXSAT,84)
+      REAL*8     PCVNEU(6,4),   PCVELV(361,182,4), PCVSAT(MAXSAT,85)
+     &           , PCVGAL(36,361,82)
      &           , DZEN
       REAL*8     HDXYZH(4)
       REAL*8     AIONBRD(4), BIONBRD(4)
@@ -1109,7 +1112,9 @@ C
      &     ISVB, NAMSVB, IGNSS, ISVN, IBLK, 
      &     DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
      &     IOLC, NAMOLC, NOCOF, XRVMRK, DTM, DMJDOL, AMPL, PHAS, 
-     &     IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
+C Mar 23, 2020
+C    &     IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
+     &     IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT, PCVGAL,
      &     ITRF, NAMTRF, RFRAME(2), RFREAL(2), TRFPAR,
      &     IMET, NAMMET, PLHMRK(3), TEMP, PRES, RH, TROSCL,
      &     IERP, NAMERP, FMJDMP, XMPDIF, YMPDIF, XMPDRT, YMPDRT,
@@ -1156,6 +1161,10 @@ C Scale GAL WL according IFREQ (SEE FREQ12)
         PRDC(9,I)= PRDC(9,I)*AL4/0.86192D0
 c       PRDC(9,I)= 0.0d0                   
        END DO
+C
+C Mar 23, 2020
+c     CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
+c    &             DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
 C
 C     SORT MRTCA CORRECTIONS INTO SATELLITE FILES
 C     AND FILL BUFFERS ( ISVCLK=3 )
@@ -1210,6 +1219,9 @@ C
      &                 XRVMRK(1),XRVMRK(2),XRVMRK(3),
      &                 PLHMRK(1),PLHMRK(2),PLHMRK(3))
       END IF
+C Mar 23, 2020
+      CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
+     &             DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
 C
 C----------------------------------------------------------------------
 C     READ SINGLE LAYER MODEL AND STORE IN GRID
@@ -2423,6 +2435,9 @@ C       AND FILL BUFFERS
 C
         RELAXAMB=.TRUE.
         NDAY=MJD-MJDS+1
+C Mar 23, 2020
+      CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
+     &             DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
 C
 C----------------------------------------------------------------------
 C       READ EPHEMERIS AND STORE IN TABLE
@@ -3485,16 +3500,44 @@ C         IF(ZEN.GT.PCVSAT(IPRN,43)) ZEN=PCVSAT(IPRN,43)
              IELV=1
              IEL2=92
           ENDIF
+C Mar 23, 2020 -start (allow GNSS specific PCVELV and GAL Az PCVSAT
+          K=1
+          IF(IPRN.GT.32.AND.IPRN.LE.64)   K=2
+          IF(IPRN.GT.64.AND.IPRN.LE.100)  K=3
+          IF(IPRN.GT.100.AND.IPRN.LE.136) K=4
           PCVL1=
 C Feb 23, 2019 allow 0.5 deg DZEN (DZEN=PCVSAT(IPRN,84)) 
 C    &     (PCVELV(I,IELV,1)+PCVSAT(IPRN,IDINT(ZEN+.5d0)+ 1))/1.d3
-     &     (PCVELV(I,IELV,1)+PCVSAT(IPRN,IDINT((ZEN+.25d0)/DZEN+ 1)))
+C    &     (PCVELV(I,IELV,1)+PCVSAT(IPRN,IDINT((ZEN+.25d0)/DZEN+ 1)))
+     &     (PCVELV(I,IELV,K)+PCVSAT(IPRN,IDINT((ZEN+.25d0)/DZEN+ 1)))
      &      /1.d3
           PCVL2=
 C Feb 23, 2019
 C    &     (PCVELV(I,IEL2,1)+PCVSAT(IPRN,IDINT(ZEN+.5d0)+21+1))/1.d3
-     &     (PCVELV(I,IEL2,1)+PCVSAT(IPRN,IDINT((ZEN+.25d0)/DZEN+42)))
+C    &     (PCVELV(I,IEL2,1)+PCVSAT(IPRN,IDINT((ZEN+.25d0)/DZEN+42)))
+     &     (PCVELV(I,IEL2,K)+PCVSAT(IPRN,IDINT((ZEN+.25d0)/DZEN+42)))
      &      /1.d3
+          DAZ= PCVSAT(IPRN,85)
+C DAZ=0 disables GAL Az PCV the NOAZI PCV is used instead
+C Mar 30, 2020 -start
+C MOST ACs DO NOT SEEM TO USE GAL Az PCVs YET, SO DAZ SET to 0 FOR NOW
+          DAZ = 0.D0
+          IF(DAZ.GE.1.D0.AND.K.EQ.3) THEN
+C Az PCV only for GAL and DAZ.NE.0!
+C GET BODY AZ (Angle between BODY X & STA in BODY XY Plane)
+           CALL BODYAZ(DTM(1),DTM(2), SANTXYZ, XRVEPO, XSV, 
+     &          VELAZ(IDX(IPRN)))
+C
+           J= IDINT((VELAZ(IDX(IPRN)) +DAZ/2.d0)/DAZ )+1
+      write(*,*)' Az PCV IPRN: ',iprn,' SAT BDY Az, DAZ: ',az(idx(iprn))
+     &          , DAZ
+           PCVL1= (PCVELV(I,IELV,K)
+     &     +PCVGAL(IPRN-64,J, IDINT((ZEN+.25d0)/DZEN+ 1)))/1.d3
+           PCVL2= (PCVELV(I,IEL2,K)
+     &     +PCVGAL(IPRN-64,J, IDINT((ZEN+.25d0)/DZEN+42)))/1.d3
+C Mar 30, 2020 -end
+          ENDIF
+C Mar 23, 2020 - end
 C
           IF ( IFREQ .EQ. 1 ) THEN
            PCVCOR(IDX(IPRN))  = PCVL1
@@ -6406,7 +6449,10 @@ C Feb 23, 2019 -start
      &     FLTSUM(1,ISVO(I)),FLTSUM(14,ISVO(I)),FLTSUM(15,ISVO(I))
      &    ,CPAMB(ISVO(I))
           IF( PX(NFPAR+I,NFPAR+I).LE.1.D-6 ) THEN
-           IF( ID .EQ. 0 ) THEN
+c 2020Mar23 : Lahaye : Add this in Feb 23, 2019 change
+c          IF( ID .EQ. 0 ) THEN
+           IF( IDD(JGNSS) .EQ. 0 ) THEN
+c 2020Mar23 : Lahaye : Add this in Feb 23, 2019 change
 C Feb 23, 2019
 C           ID=I
             IDD(JGNSS)=I
@@ -9288,6 +9334,8 @@ c           IF (RECORD(1:2).EQ.'WL') GO TO 51
 c Lahaye : 2020Feb26 : general handling of WL records until END OF HEADER
             BACKSPACE(LUCLK)
           ENDIF
+C Feb 25, 2020
+          CLKRMS=0.D0
           READ(RECORD,1050,ERR=1051)
      &                      CLKTYP,CLKNAM,IYEAR,IMTH,IDAY,IHR,IMIN, 
      &                      SEC, NECLK, CLKEST, CLKRMS
@@ -9336,6 +9384,8 @@ C
         ELSE
           IF ( RECORD(1:4).NE.'AS G'.AND.RECORD(1:4).NE.'AS R'
      &    .AND.RECORD(1:4).NE.'AS E'.AND.RECORD(1:4).NE.'AS C') GO TO 50
+C Feb 25, 2020
+          CLKRMS=0.D0
           READ(RECORD,1050,ERR=1052)
      &                     CLKTYP,CLKNAM,IYEAR,IMTH,IDAY,IHR,IMIN, 
      &                     SEC,NECLK,CLKEST,CLKRMS
@@ -18401,11 +18451,12 @@ C
 C
 C       SP3 SATELLITE CLOCKS - NO CLOCK INTERPOLATION (OPT(10)) 
 C
-        IF ( DMOD(OPT(6),10.D0) .EQ. 1 .AND. OPT(7) .EQ. 2 ) THEN
-          IOPTER(1)=6
-          IOPTCF=3
-          IOPTER(2)=7
-        END IF
+C Feb 19, 2019
+C       IF ( DMOD(OPT(6),10.D0) .EQ. 1 .AND. OPT(7) .EQ. 2 ) THEN
+C         IOPTER(1)=6
+C         IOPTCF=3
+C         IOPTER(2)=7
+C       END IF
       END IF
 C
 C
@@ -18597,7 +18648,9 @@ C
      &           DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
      &           IOLC, NAMOLC, XRVMRK, DTM, NOCOF, AMPL, PHAS, 
      &           DMJDOL, TW,
-     &           IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
+C Mar 23, 2020
+C    &           IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
+     &           IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT, PCVGAL,
      &           ITRF, NAMTRF, IREFIN, RFRAME, RFREAL, TRFPAR,
      &            ICLKAP,NAMSTC,CLKY0,CLKD0,UCLKY0,UCLKD0,CLKSD0,
      &            ICLKFIT,
@@ -18638,6 +18691,8 @@ C
 C AMPL(4,J) PHAS(4,j) contains frequency/phase of tidal term
       REAL*8    XRVMRK(*), DTM(*), AMPL(4,*), PHAS(4,*)
       REAL*8  PCVNEU(6,*), PCVELV(361,182,*),TRFPAR(*), PCVSAT(MAXSAT,*)
+C Mar 23, 2020
+     &       , PCVGAL(36, 361, 82)
       REAL*8    STNHGT, TEMP, PRES, RH, TROSC, SDPR
       REAL*8    SDCLK
 C
@@ -18682,7 +18737,9 @@ C     READ USER ANTENNA PHASE CENTER VARIATIONS
 C      
       OPEN ( LUDEF, FILE=NAMPCV, STATUS='UNKNOWN')
 c!    WRITE(*,*) 'CALLING RDPCV',NAMPCV
-      CALL RDPCV( LUDEF, ANTNAM, PCVNEU, PCVELV, PCVSAT, 
+C Mar 23, 2020
+C     CALL RDPCV( LUDEF, ANTNAM, PCVNEU, PCVELV, PCVSAT, 
+      CALL RDPCV( LUDEF, ANTNAM, PCVNEU, PCVELV, PCVSAT, PCVGAL, 
      &     DSVX, DSVY, DSVZ, MAXSAT, IPCV, IYEARS, IMTHS, IDAYS, ISVBLK,
      &     FOUND22, IFREQ)
       CLOSE (LUDEF)
@@ -20285,7 +20342,9 @@ C Droit d'auteur (c) Gouvernement du Canada, 2018. Sous termes de Licence MIT
 C
 C
 C
-      SUBROUTINE RDPCV(LUPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
+C Mar 23, 2020
+C     SUBROUTINE RDPCV(LUPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
+      SUBROUTINE RDPCV(LUPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT, PCVGAL,
      &   DSVX, DSVY, DSVZ, MAXSAT, IPCV, IYEARS, IMTHS, IDAYS, ISVBLK,
      &   FOUND22 , IFREQ)
 C
@@ -20305,6 +20364,8 @@ C          PCVSAT       SATELLITE ANT PHASE CENTRE NADIR TABLE
 C                       (IPRN, 1 -21) L1 PCV, 0->20 DEG, 1 DEG INTERVAL
 C                       (IPRN, 92-42) L2 PCV, 0->20 DEG, 1 DEG INTERVAL
 C                       (IPRN, 43) MAX NADIR ANGLE ENCODED
+C Mar 23, 2020
+C          PCVGAL       GALILEO Azimuth ANT PHASE CENTRE NADIR TABLE
 C          DSVX-Z       SAT ANT OFFSETs IN BODY FIXED X,Y,Z, ALREDY READ
 C                       IN RDSAT (GPSPPP.SVB), IF AVAILABLE OVERRIDES
 C          MAXSAT       (SEE MAXDIM)
@@ -20325,6 +20386,8 @@ C
       INTEGER   MAXSAT, IBLK
       REAL*8 PCVELV(361,182,*),PCVSAT(MAXSAT,*), DSVX(*),DSVY(*),DSVZ(*)
      &         , DAZI, ZEN1, ZEN2, DZEN, DANTS(6)
+C Mar 23, 2020
+     &         , PCVGAL(36, 361, 82)
       REAL*8  F1, F2, F1S, F2S, F12S, F1ION, F2ION, AL1, AL2, AL3, AL4
       CHARACTER    VERSION*3
       CHARACTER    RECORD*80
@@ -20364,6 +20427,15 @@ C      DO I=1,43
         PCVELV(J,I,1)=0.D0
         ENDDO
       END DO
+C Mar 23, 2020 -start
+      DO I=1,36
+       DO j= 1, 361
+        DO K= 1,82
+         PCVGAL(I, J, K)= 0.D0
+        ENDDO
+       ENDDO
+      ENDDO
+C Mar 23, 2020 -end  
 C
 C 
 C
@@ -20572,6 +20644,8 @@ C
 201            READ(LUPCV,'(A80)',END=501, ERR=600) RECORD
                IF(RECORD(61:64).EQ."DAZI") THEN
                   READ(RECORD,'(2x,f6.1)') DAZI   
+C Mar 23, 2020
+                  PCVSAT(IPRN,85) = DAZI
                   GOTO 201
                ENDIF
                IF(RECORD(61:64).EQ."ZEN1") THEN
@@ -20638,10 +20712,23 @@ C USE BEIDOU B2 (RNX3 CODE = 7) FOR L2
                    READ(RECORD,'(3F10.2)',ERR=600) (DANTS(J),
      &                                       J=(i-1)*3+1,(i-1)*3+3) 
 C NOAZIM PCV only
-                   READ(LUPCV,'(8x,19f8.2)',ERR=600)
+C Mar 23, 2020
+C                  READ(LUPCV,'(8x,19f8.2)',ERR=600)
+                   READ(LUPCV,'(8x,41f8.2)',ERR=600)
 C Feb 23, 2019
 C    &                                (PCVSAT(IPRN,(i-1)*21+J) ,J=IF,IL)
      &                                (PCVSAT(IPRN,(i-1)*41+J) ,J=IF,IL)
+C Mar 23, 2020 start:        read GAL AZ PCV - start
+                  DAZI= PCVSAT(IPRN,85)
+                  IF(DAZI.GE.1.D0.AND.IPRN.GT.64.AND.IPRN.LE.100) THEN
+C AZIM PCV (0->360 deg;  rows)
+                    IRL= INT(360.d0/DAZI + 1.1)
+                    DO IR= 1,IRL
+                      READ(LUPCV,'(8x,41f8.2)', ERR=600)
+     &                           (PCVGAL(IPRN-64,IR,(i-1)*41+J),J=IF,IL)
+                    ENDDO
+                   ENDIF
+C Mar 23, 2020 -end
                   ENDIF
                 IF(I.EQ.1. AND.(DANTS(4)+DANTS(5)+DANTS(6)).EQ.0.D0) 
      &             GO TO 201
@@ -28918,7 +29005,9 @@ C
       END IF
       WRITE(LPR,1100) EPOHDR(LNG),IYEAR,IMTH,IDAY,IHRS,IMINS,
      &   INT(SECS),INT((SECS-INT(SECS))*100)
-      IF(IDIR.EQ.1) THEN
+C Mar 30, 2020
+C     IF(IDIR.EQ.1) THEN
+      IF(IDIR.EQ.-1) THEN
         CLK='FWD  '
         WRITE(LPR,1102) CLKHDR(LNG),CLKFWDU(LNG)
       ELSE IF(SMTHCLK) THEN
@@ -29618,7 +29707,9 @@ C
      &           ISVB, NAMSVB, IGNSS, ISVN, ISVBLK, 
      &           DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
      &           IOLC, NAMOLC, NOCOF, XRVMRK, DTM, DMJDOL, AMPL, PHAS, 
-     &           IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
+C Mar 23, 2020
+C    &           IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
+     &           IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT, PCVGAL,
      &           ITRF, NAMTRF, RFRAME, RFREAL, TRFPAR,
      &           IMET, NAMMET, STNHGT, TEMP, PRES, RH, TROSCL,
      &           IERP, NAMERP, FMJDMP, XMPDIF, YMPDIF, XMPDRT, YMPDRT,
@@ -29669,7 +29760,9 @@ C AMPL(4,J) PHAS(4,j) contains frequency/phase of tidal term
 C
       REAL*8    DMJDOL
       REAL*8    XRVMRK(*),DTM(*),AMPL(4,*),PHAS(4,*),PCVNEU(6,*)
-      REAL*8    PCVSAT(MAXSAT,*)
+C Mar 23, 2020
+C     REAL*8    PCVSAT(MAXSAT,*)
+      REAL*8    PCVSAT(MAXSAT,*), PCVGAL(36, 361,*)
       REAL*8    DAZ, DZE
       REAL*8 PCVELV(361,182,*),TRFPAR(*),VSCALE,STNHGT,TEMP,PRES,RH,
      &       TROSCL
@@ -29917,7 +30010,9 @@ C
      &            DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
      &            IOLC, NAMOLC, XRVMRK, DTM, NOCOF, AMPL, PHAS, 
      &            DMJDOL, TW,
-     &            IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
+C Mar 23, 2020
+C    &            IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
+     &            IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT, PCVGAL,
      &            ITRF, NAMTRF, IREFIN, RFRAME, RFREAL, TRFPAR,
      &            ICLKAP,NAMSTC,CLKY0,CLKD0,UCLKY0,UCLKD0,CLKSD0,
      &           ICLKFIT,
@@ -30790,10 +30885,14 @@ C
  1161 FORMAT(5X,A35,2X,I7,2X,A7)
  1162 FORMAT(5X,A35,2X,I7,2X,I3,'%')
  1405 FORMAT ( A3,1X,A4,2(1X,I4,'/',I2.2,'/',I2.2,
-     &       1X,2(I2.2,':'),I2.2,F2.1), 1X,I2,4(1X,I6), 2f5.1,f5.0,f6.0,
+C Mar 30, 2020
+C    &       1X,2(I2.2,':'),I2.2,F2.1), 1X,I2,4(1X,I6), 2f5.1,f5.0,f6.0,
+     &       1X,2(I2.2,':'),I2.2,F2.1), 1X,I3,4(1X,I6), 2f5.1,f5.0,f6.0,
      &       f8.3,3(I4,'%') )
  1410 FORMAT ( A3,1X,A4,1X,I4,'/',I2.2,'/',I2.2,
-     &         1X,A3,1X,A2,4(1X,F6.3),7(1X,I4),4(1X,I4),1X,I10 )
+C Mar 30, 2020
+C    &         1X,A3,1X,A2,4(1X,F6.3),7(1X,I4),4(1X,I4),1X,I10 )
+     &         1X,A3,1X,A2,4(1X,F6.3),2(1X,I4),I6,6(1X,I4),I6,I5,1X,I10)
  1500 FORMAT(1X,A1,I2,A1,I4,I3,1X,I3,1X,I5,7(1X,I4),2(1X,F6.2,1X,F5.2))
  1501 FORMAT(1X,1X,2X,1X,8X,I3,'%',2X,I3,'%',3(1X,4X),4(I4,1X))
       RETURN
@@ -32781,3 +32880,227 @@ C
 C
       RETURN
       END
+C Mar 23, 2020 -start
+C
+      SUBROUTINE BIAINP(LU , NAMEPH, STNA, PRDC, DP1P2, DP1C1,
+     &                  DP2C2, IY, IDOY,  IERR, IEND, IFREQ , IPC )
+C
+C Soubroutine reads the standard bia format file, computes the DCB 
+C arrays DP1P2, DP1C1, DP2C2; as well as WL and NL ones in PRDC(9,*) and
+C PRDC(10,*), required for AR, provided that in the bia file the L* biases
+C are present and non zero!
+C
+C This subroutine overwrites DCB's, WLs & NLs in the gpsppp.svb, gpspp.wsb
+C and gpsppp.nsb files, respectively; as well as the WLs in the clk file,
+C if present
+C
+C Only GPS, GLONASS and GALILIEO are implemented. For Galileo
+C E1/E5a frequency pair (the Pace option IFREQ = 3, or 5) is implemented as
+C this freq pair is currently used by all MGEX ACs as well as for Galileo AR.
+C
+C Although the additional GAL frequency options: IFREQ=7 (E1/E5b) and IFREQ= 8
+C (E1/(E5a+Eb)/2) are also implemented here, since they are not
+C currently used by MGEX ACs, so for a  onsistency, it should not be
+C used
+C
+C WARNING: 
+C Beidou frequencies/biases are not implemented !               
+C
+C Requires the Pace subroutines FREQ12,CHSFX and the input of:
+C NAMEPH - the name of orbit file, used to parce the bis file name
+C          (the bis file is assumed in the same dir and the same name as NAMEPH
+C           but with the extension 'bia')
+C IY,IDOY- Year and Day oy year of observation
+C IFREQ  - the dual freq option 
+C IPC    - print out option      
+C
+C *********************************************************************
+         IMPLICIT NONE
+      CHARACTER*80  NAMBIA, NAMEPH
+      CHARACTER*40  STNA            
+      CHARACTER*144 RECORD 
+      CHARACTER*3 ICOD
+      INTEGER*4 LU, IERR, IEND, IDSVBIA(136), IFREQ, IPC, IPRN, IOS, I,
+     &         IGNSS, IY, IDOY, ISV, IYS, IDS, ISS, IYE, IDE, ISE, MJD
+      REAL*8  PRDC(10,*), DP1P2(*), DP1C1(*), DP2C2(*),
+     &          BIAS, SBIAS
+C FRQCY
+      REAL*8    F1,   F2, F1S, F2S, F12S, F1ION, F2ION,
+     &          AL1, AL2, AL3, AL4
+C CODE BIASES
+      REAL*8  C1W(136), C2W(136),C1C(136), C2C(136), C2S(136),C2L(136),
+     &        C5Q(136), C5X(136),C1P(136), C2P(136), C1X(136),
+C PHASE BIASES
+     &        L1W(136), L2W(136), L1C(136), L5Q(136)
+C
+C Parse the bia file name (the same dir as NAMEPH!)
+      CALL CHSFX( NAMEPH, NAMBIA, '.bia') 
+C
+      OPEN(LU , FILE= NAMBIA, STATUS='OLD',IOSTAT=IOS, ERR=50) 
+       write(*,*)' **** USING BIA FILE: ', NAMBIA
+C INITILIZE BIASES
+      DO I= 1, 136
+       IDSVBIA(I)= 0  
+       C1W(I)= 0.D0
+       C2W(I)= 0.D0
+       L1W(I)= 0.D0
+       L1C(I)= 0.D0
+       L2W(I)= 0.D0
+       L5Q(I)= 0.D0
+       C1C(I)= 0.D0
+       C1X(I)= 0.D0
+       C2C(I)= 0.D0
+       C2P(I)= 0.D0
+       C2S(I)= 0.D0
+       C5Q(I)= 0.D0
+       C5X(I)= 0.D0
+      END DO
+C
+30    READ(LU,'(A144)',ERR=20,END=60 ) RECORD
+      IF(RECORD(2:4).NE.'OSB') GO TO 30     
+      IF(RECORD(16:19).EQ.'    '.OR.RECORD(16:19).EQ.STNA(1:4)) THEN
+       READ(RECORD       ,40) ISV, ICOD, IYS, IDS, IYE, IDE,  
+     & BIAS, SBIAS
+C MJD-NON STANDARD MJDAY BIAS DATUM - IGNORED
+c    & BIAS, SBIAS, MJD
+40    FORMAT(12X, I2, 11X, A3, 6X, 2(I5, 1X, I3, 6X), 15X, 2F12.4, 35X,
+     &        I6) 
+      IGNSS=0
+C GLONASS
+      IF(RECORD(12:12).EQ.'R') IGNSS=32
+C GAL    
+      IF(RECORD(12:12).EQ.'E') IGNSS=64
+C BEI     
+      IF(RECORD(12:12).EQ.'C') IGNSS=100
+C
+      IF(BIAS.NE.0.D0.AND.ISV.NE.0) THEN
+       IF(IY.EQ.IYS.AND.IDOY.EQ.IDS) THEN
+        ISV= ISV +IGNSS
+        IDSVBIA(ISV)= ISV
+C
+        IF(IPC.GE.3) write(*,*)  iSV, ICOD, IYS, IDS, IYE, IDE,  
+     &  BIAS, SBIAS
+C NON STANDAD
+c    & BIAS, SBIAS, MJD
+C
+        IF(ICOD.EQ.'C1W') C1W(ISV)= BIAS
+        IF(ICOD.EQ.'C2W') C2W(ISV)= BIAS
+        IF(ICOD.EQ.'L1W') L1W(ISV)= BIAS
+        IF(ICOD.EQ.'L1C') L1C(ISV)= BIAS
+        IF(ICOD.EQ.'L2W') L2W(ISV)= BIAS
+        IF(ICOD.EQ.'C1C') C1C(ISV)= BIAS
+        IF(ICOD.EQ.'C1P') C1P(ISV)= BIAS
+        IF(ICOD.EQ.'C1X') C1X(ISV)= BIAS
+        IF(ICOD.EQ.'C2C') C2C(ISV)= BIAS
+        IF(ICOD.EQ.'C2P') C2P(ISV)= BIAS
+        IF(ICOD.EQ.'C2S') C2S(ISV)= BIAS
+        IF(ICOD.EQ.'C5Q') C5Q(ISV)= BIAS
+        IF(ICOD.EQ.'C5X') C5X(ISV)= BIAS
+        IF(ICOD.EQ.'L5Q') L5Q(ISV)= BIAS
+C
+         IF(IFREQ.EQ.7) THEN
+          IF(ICOD.EQ.'C7Q') C5Q(ISV)= BIAS
+          IF(ICOD.EQ.'C7X') C5X(ISV)= BIAS
+          IF(ICOD.EQ.'L7Q') L5Q(ISV)= BIAS
+         ENDIF
+C
+         IF(IFREQ.EQ.8) THEN
+          IF(ICOD.EQ.'C8Q') C5Q(ISV)= BIAS
+          IF(ICOD.EQ.'C8X') C5X(ISV)= BIAS
+          IF(ICOD.EQ.'L8Q') L5Q(ISV)= BIAS
+         ENDIF
+       ENDIF
+      ENDIF
+      ENDIF
+      GO TO 30
+C COMPUTE DCB's & WSB's , NSB's
+60    CONTINUE
+      DO I=1, 136
+C GET GNSS FREQs
+       IF(I.EQ.1.OR.I.EQ.33.OR.I.EQ.65.OR.I.EQ.101)
+     &   CALL FREQ12(I   , F1, F2, F1S, F2S, F12S, F1ION, F2ION,
+     &                AL1, AL2, AL3, AL4, IFREQ )
+       IPRN = IDSVBIA(I)
+       IF(IPRN.NE. 0) THEN
+C GPS      ** WARNING*** C1W,C2W may be zeros in some bia files !
+        IF(IPRN.LE.32) THEN
+         IF(C1W(IPRN)*C2W(IPRN).NE.0.D0) DP1P2(IPRN)=C1W(IPRN)-C2W(IPRN)
+         IF(C1C(IPRN).NE.0.D0) DP1C1(IPRN)=C1W(IPRN)-C1C(IPRN)
+         IF(C2C(IPRN).NE.0.D0) DP2C2(IPRN)=C2W(IPRN)-C2C(IPRN)
+         IF(L1W(IPRN)*L2W(IPRN).NE.0.D0 ) THEN
+C WL(M)
+          PRDC(9,IPRN)=-1.D-9*(L1W(IPRN)*F1-L2W(IPRN)*F2-(C1W(IPRN)*F1
+     &                 +C2W(IPRN)*F2)*(F1-F2)/(F1+F2))*AL4
+C NL(M)
+          PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN)*F2ION-L2W(IPRN)*F1ION)         
+         ENDIF
+        ENDIF
+C GLONASS
+        IF(IPRN.GT.32.AND.IPRN.LE.64) THEN
+         IF(C1P(IPRN)*C2P(IPRN).NE.0.D0) DP1P2(IPRN)=C1P(IPRN)-C2P(IPRN)
+         IF(C1P(IPRN)*C1C(IPRN).NE.0.D0) DP1C1(IPRN)=C1P(IPRN)-C1C(IPRN)
+         IF(C2P(IPRN)*C2C(IPRN).NE.0.D0) DP2C2(IPRN)=C2P(IPRN)-C2C(IPRN)
+         IF(L1W(IPRN)*L2W(IPRN).NE.0.D0) THEN
+C WL (M)
+          PRDC(9,IPRN)=-1.D-9*(L1W(IPRN)*F1-L2W(IPRN)*F2-(C1P(IPRN)*F1
+     &                 +C2P(IPRN)*F2)*(F1-F2)/(F1+F2)) *AL4
+C NL (M)
+          PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN)*F2ION-L2W(IPRN)*F1ION)         
+         ENDIF
+        ENDIF
+C GALILEO  ** WARNING*** C1C,C5Q may be zeros in some bia files !
+        IF(IPRN.GT.64.AND.IPRN.LE.100) THEN
+         IF(C1C(IPRN)*C5Q(IPRN).NE.0.D0) DP1P2(IPRN)=C1C(IPRN)-C5Q(IPRN)
+         IF(C1X(IPRN).NE.0.D0) DP1C1(IPRN)=C1C(IPRN)-C1X(IPRN)
+         IF(C5X(IPRN).NE.0.D0) DP2C2(IPRN)=C5Q(IPRN)-C5X(IPRN)
+         IF(L1C(IPRN)*L5Q(IPRN).NE.0.D0) THEN
+C WL(M)
+          PRDC(9,IPRN)=-1.D-9*(L1C(IPRN)*F1-L5Q(IPRN)*F2-(C1C(IPRN)*F1
+     &                 +C5Q(IPRN)*F2)*(F1-F2)/(F1+F2)) *AL4
+C NL(M)
+          PRDC(10,IPRN)=-0.299792D0*(L1C(IPRN)*F2ION-L5Q(IPRN)*F1ION)         
+         ENDIF
+        ENDIF
+C
+        IF(IPC.GE.3)
+     &  write(*,*)'IPRN DP12, DP1C1, DP2C2, WL, NL',IPRN, DP1P2(IPRN),
+     &        DP1C1(IPRN), DP2C2(IPRN), PRDC(9,IPRN), PRDC(10,IPRN) 
+       ENDIF
+      ENDDO
+      GO TO 10
+20    write(*,*) 'READ ERROR IN BIA FILE! ' , NAMBIA
+10    CLOSE(LU)
+50    RETURN
+      END
+C Mar 23, 2020 -end
+C Mar 30, 2020 -start
+      SUBROUTINE BODYAZ (A, E, BDX, X1, X2, AZ)
+C
+C     PURPOSE:   COMPUTE THE ANGLE BETWEEN BODY X & RECEIVER
+C                (BODY AZ FOR SAT Az PCVs)
+C
+C     PARAMETERS         DESCRIPTION
+C        A               EARTH SEMIMAJOR AXIS
+C        E               EARTH EXCCENTRICITY
+C        BDX(3)          SAT BODY X UNIT VECTOR IN ITRF
+C        X1              STATION XYZ        
+C        X2              SATELLITE XYZ
+C        AZ              SAT BODY X ANGLE TO STATION
+C
+      IMPLICIT NONE
+      REAL*8 A, E, AZ, BAZ, X1(3), X2(3), BDX(3)
+      REAL*8 PHI,PLAM, H, EL, D, PI
+      PI = (DATAN(1.D0)) * 4.D0
+C COMPUTE SAT LAT/LONG,H
+      CALL XYZPL2(0.d0, 0.d0, 0.d0,A,E, X2(1),X2(2),X2(3), PHI,PLAM,H)
+C COMPUTE SAT-REC AZIMUTH AZ
+      CALL AZELD (X2(1),X2(2),X2(3), PHI,PLAM,X1(1),X1(2),X1(3),AZ,EL,D)
+C COMPUTE BODY X AZIMUTH BAZ
+      CALL AZELD (X2(1),X2(2),X2(3), PHI,PLAM,
+     & X2(1)+BDX(1), X2(2)+BDX(2), X2(3)+BDX(3),BAZ,EL,D)
+      AZ = (AZ-BAZ)*180/PI
+      IF(AZ.LT.0.D0)AZ= AZ + 360
+      IF(AZ.GT.360) AZ= AZ-360
+      RETURN
+      END
+C Mar30, 2020 -end
