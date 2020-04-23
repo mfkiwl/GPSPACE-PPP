@@ -1,4 +1,4 @@
-C12345678901234567890123456789012345678901234567890123456789012345678901234567890
+C2345678901234567890123456789012345678901234567890123456789012345678901234567890
 C
 C     NAME:  GPSPACE
 C
@@ -339,7 +339,10 @@ C
       CHARACTER*90 RESARC(2,MAXSAT)
       CHARACTER*80 RESREJ(MAXRES)
       CHARACTER*80 DATJMP(MAXRES)
-      CHARACTER*3  DIR(2)
+c 2020Apr16 : new clock specific output
+c     CHARACTER*3  DIR(2)
+      CHARACTER*3  DIR(3)
+c 2020Apr16 : new clock specific output
 C
       LOGICAL FIRSTE, FIRSTM, IPFOUND, INIEPO, UPDEPO
 C
@@ -405,6 +408,9 @@ C
      &          IFLAG,IFLTOP,NCSLIP15,IYGRD,IMGRD,IDGRD,NRXDCB,
      &          NSVDCB,IRC,MJD,INSVO,IPRN,IELV,IEL2,IOBPR,IOBCP,
      &          NMSJMP,NMSOFF,IAMBSUM,
+c 2020Apr16 : new clock specific output
+     &          IAMBSUMS(4),
+c 2020Apr16 : new clock specific output
      &          NFPAR,NSVO2,NEWAMB,IDEGP,IMINP,IDEGL,IMINL,
      &          NSVARC,     IONREF,NOBREC,IC1USE,IC2USE,
      &          IDCBUSE,INTOBS,IXRVRNX,NOBS,IMIX, NRESREJ,
@@ -478,7 +484,10 @@ C
       REAL*8 DCOFFSET,DCDRIFT, DCSDOFF, DCSDRIFT
       REAL*8 CDRIFTRATE, CSDRIFTRATE, CCLKRMS
       REAL*8 DCDRIFTRATE, DCSDRIFTRATE, DCCLKRMS
-      INTEGER*4 NAMBFX
+c 2020Apr16 : day boundary AR NL jumps handling
+c     INTEGER*4 NAMBFX
+      INTEGER*4 NAMBFX,NCAMBFX(4),FIXC(4)
+c 2020Apr16 : day boundary AR NL jumps handling
       INTEGER*4 MINSAT
 C
       REAL*8 SOBWD
@@ -502,16 +511,28 @@ C     GLNS INTER FREQ RATE/CHANNEL IN NS (FROM RDHDR)
 C Feb 23, 2019
 C     INTEGER*4 IPRNREF
       INTEGER*4 IPRNREF(4), JREF(4), JGNSS,  IDD(4)
+c 2020Apr16 : day boundary AR NL jumps handling
+     &          ,IGNSSREF(4)
+c 2020Apr16 : day boundary AR NL jumps handling
 C      IPEPINT-  PREC EPH INTERVAL
       INTEGER*4 IPEPINT
       INTEGER*4 IK
       LOGICAL*4 RELAXAMB
-      INTEGER*4 IPRNFX(MAXDAYS)
-      REAL*8    SMDCLK,NLPERIOD,NLWL,NCLKNL
+c 2020Apr16 : day boundary AR NL jumps handling
+c     INTEGER*4 IPRNFX(MAXDAYS)
+c     REAL*8    SMDCLK,NLPERIOD,NLWL,NCLKNL
+      INTEGER*4 IPRNFX(4,MAXDAYS)
+      REAL*8    SMDCLK(4),NLWL(4)
+c 2020Apr16 : day boundary AR NL jumps handling
       INTEGER*4 NSVCOMN,IDXN(MAXOBS),IDXO(MAXOBS)
       LOGICAL*8 SVRELAX(MAXOBS)
-      INTEGER*4 MNRELAX,NRELAX,NFIXGRP
-      REAL*8    DMISCPNL
+c 2020Apr16 : day boundary AR NL jumps handling
+c     INTEGER*4 MNRELAX,NRELAX,NFIXGRP
+c     REAL*8    DMISCPNL
+      INTEGER*4 NFIXGRP,NMISCPNL,CNTMISCPNL(4)
+      REAL*8    DMISCPNL,FMISCPNL,AMISCPNL,AVGMISCPNL(4)
+      REAL*8    MINMISCPNL(4),MAXMISCPNL(4)
+c 2020Apr16 : day boundary AR NL jumps handling
       LOGICAL*4 SMTHCLK
 C Previous DELTAR, DELTAP
       REAL*8 DELTAPP_GLN, DELTARP_GLN
@@ -532,7 +553,10 @@ C Previous DELTAR, DELTAP
       INTEGER*4 NMISCPGRP, IMISCP_GRP(MAXOBS),MISCPCNT(MAXOBS)
       REAL*8 MISCPAVG(MAXOBS),MISCPSTD(MAXOBS)
       REAL*8 MISCFACTR, MISCFACTP
-      INTEGER*4 NEPFIX
+c 2020Apr16 : day boundary AR NL jumps handling
+c     INTEGER*4 NEPFIX
+      INTEGER*4 NEPFIX,NCEPFIX(4),NCFIX(4)
+c 2020Apr16 : day boundary AR NL jumps handling
       INTEGER*4 NEPOCHDEL,INIEPOCHDEL
       INTEGER*4 NSVDWGT, NSVDWSAV, ISVDWGT(MAXOBS), ISVDWSAV(MAXOBS)
 C WHEN OUTLIERACTION=0 ALL MISCLOSURES/RESIDUAL REJECTION ARE DELETED
@@ -546,6 +570,9 @@ C BETAINI- INI BETA ANGLE OF ECLPS START(BEI EXCLUDED)
       REAL*8 BETAINI(136)
       DATA   BETAINI/136*0.D0/
       LOGICAL*4 TESTMISC
+C ===================
+      INTEGER*4 JPC
+C ===================
 C
       DATA YAWMODEL/0/
 C RTCM SPECIFIC INITIALIZATION
@@ -588,7 +615,10 @@ C
       DATA   (RFRAME(ID),ID=1,2)    /  'NAD83','ITRF ' /
       DATA   (RFREAL(ID),ID=1,2)    /  'CSRS ','WGS84' /
 C
-      DATA   (DIR(ID),ID=1,2)      /  'FWD','BWD' /
+c 2020Apr16 : new clock specific output
+c     DATA   (DIR(ID),ID=1,2)      /  'FWD','BWD' /
+      DATA   (DIR(ID),ID=1,3)      /  'FWD','BWD','SMT' /
+c 2020Apr16 : new clock specific output
 C
       DATA FIRSTE,FIRSTM / .TRUE., .TRUE. /
       DATA MAXIT /7/
@@ -639,9 +669,9 @@ C
       DATA IDIR/1/
       DATA NDIR/-1/
 C     VERSION NUMBER
-      DATA IVERSION/110/
+      DATA IVERSION/120/
 C     RELEASE NUMBER (day of year,last two-digits of year)
-      DATA IRLEASE/25018/
+      DATA IRLEASE/10720/
       DATA NFIXR / 0/
       DATA INTCLK / 900/
       DATA ITER / 0/
@@ -701,11 +731,23 @@ C DEFAULT: ENABLING CODE MISC TEST; ENABLING PHASE MISC TEST
 C DEFAULT: ENABLING CODE MISC TEST; DISABLING PHASE MISC TEST
       DATA MISCFACTR, MISCFACTP/ 9.D0, 0.D0 /
       DATA RELAXAMB/.FALSE./
-      DATA IPRNFX/MAXDAYS*0/
+c 2020Apr16 : day boundary AR NL jumps handling
+c     DATA IPRNFX/MAXDAYS*0/
+c 2020Apr16 : day boundary AR NL jumps handling
       DATA SVRELAX/MAXOBS*.FALSE./
-      DATA SMDCLK/0.D0/
-      DATA NCLKNL/0.D0/
+c 2020Apr16 : day boundary AR NL jumps handling
+c     DATA SMDCLK/0.D0/
+c     DATA NCLKNL/0.D0/
+      DATA SMDCLK/4*0.D0/
+c 2020Apr16 : day boundary AR NL jumps handling
       DATA SMTHCLK/.TRUE./
+c 2020Apr16 : day boundary AR NL jumps handling
+      DO J=1,4
+       DO I=1,MAXDAYS
+        IPRNFX(J,I)=0
+       END DO
+      END DO
+c 2020Apr16 : day boundary AR NL jumps handling
       DO I=1,MAXOBS2
         DO J=1,MAXPAR2
           A(I,J) = 0.D0
@@ -727,8 +769,11 @@ C     IPRNREF=0
         IDD(I)    =0
         DN12REF(I)= 0.0D0
         PRDCREF(I)= 0.0D0
+c 2020Apr16 : day boundary AR NL jumps handling
+        IGNSSREF(I)=0
+c 2020Apr16 : day boundary AR NL jumps handling
        ENDDO 
-c Feb 23, 2019 -end
+C Feb 23, 2019 -end
       DELTARP=0.D0
       DELTAPP=0.D0
       SOLTTAG=0.D0
@@ -920,10 +965,18 @@ C
       NDIR    = ICMD(11)
       IREFOUT = ICMD(12)
       ICOROUT = ICMD(13)
-      CALL FREQ12(1, F1, F2, F1S, F2S, F12S, F1ION, F2ION,
+c 2020Apr16 : day boundary AR NL jumps handling
+c     CALL FREQ12(1, F1, F2, F1S, F2S, F12S, F1ION, F2ION,
+c    &            AL1, AL2, AL3, AL4, IFREQ )
+c     NLWL=AL3
+c     NLPERIOD=NLWL/C*1.D9
+      DO J=4,1,-1
+      IPRN=J*32
+      CALL FREQ12(IPRN, F1, F2, F1S, F2S, F12S, F1ION, F2ION,
      &            AL1, AL2, AL3, AL4, IFREQ )
-      NLWL=AL3
-      NLPERIOD=NLWL/C*1.D9
+      NLWL(J)=AL3
+      END DO
+c 2020Apr16 : day boundary AR NL jumps handling
 C
 C       SAVE SELECTED TROPO SOLUTION AND OBSERVATION TYPE
 C       SET TROPO MODEL AND CODE OBSERVATION FOR INITIAL EPOCH
@@ -1072,6 +1125,10 @@ C
       END IF
       CALL PGMLBL( LRES, IVERSION, IRLEASE, NAMORG, NLNORG, LNG )
       WRITE(LRES,2600) 
+c 2020Apr16 : new clock specific output
+      CALL PGMLBL( LUCLK, IVERSION, IRLEASE, NAMORG, NLNORG, LNG )
+      WRITE(LUCLK,2700) 
+c 2020Apr16 : new clock specific output
 C
 C     WRITE PPP VERSION AND RELEASE NUMBER TO SESSION FILE
 C
@@ -1120,6 +1177,9 @@ C    &     IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
      &     IERP, NAMERP, FMJDMP, XMPDIF, YMPDIF, XMPDRT, YMPDRT,
      &     IPXR, NAMIPX, ICLKAP,NAMSTC,CLKY0,CLKD0,UCLKY0,
      &     UCLKD0,CLKSD0, ICLKFIT, EPOCH, LNG, IGF )
+C ===================
+      JPC=IPC
+C ===================
 C SAVE INPUT DMAXNL&DMAXWL IN DMXNLSAV & DMXWLSAV for CY SLIP SWITCH
       IF (IPXR .EQ. 0) THEN
            LFIXNL=FLTPAR(1) .LT. 0.D0
@@ -1159,7 +1219,7 @@ C Feb 23, 2019 - scale GAL WL (if available
        DO I=65,100
 C Scale GAL WL according IFREQ (SEE FREQ12)
         PRDC(9,I)= PRDC(9,I)*AL4/0.86192D0
-c       PRDC(9,I)= 0.0d0                   
+C       PRDC(9,I)= 0.0d0                   
        END DO
 C
 C Mar 23, 2020
@@ -1500,6 +1560,12 @@ C RELAX FIXED AMBS FOR BWD
       END IF
       NFIX = 0
       NEPFIX = 0
+c 2020Apr16 : day boundary AR NL jumps handling
+      DO I=1,4
+       NCEPFIX(I) = 0
+       NCFIX(I)=0
+      END DO
+c 2020Apr16 : day boundary AR NL jumps handling
 C
       DO I=1,3
         XRVSUM(I) = 0.D0
@@ -1613,6 +1679,14 @@ c!     write(*,*) (i,isvo(i), pr1(i)*c,cr1(i)*c,DP1C1(ISVO(I)),i=1,nsvo)
 C
 C     FORM UNAMBIGUOUS TIME TAG
 C
+C ===================
+      IF(MOD(INT(UTTAG),86400).LE.60.OR.
+     &   MOD(INT(UTTAG),86400).GE.86340) THEN
+       IPC=3
+      ELSE
+       IPC=JPC
+      ENDIF
+C ===================
       CALL TOWHMS( IWKDAY, TTAG(1), IHR, IMIN, SEC, 0 )
       CALL GPSDC ( JULD,IYEAR,IMTH,IDAY,IGPSWK,IWKDAY, 4 )
       UTTAG=IGPSWK*604800.D0+TTAG(1)
@@ -2436,8 +2510,18 @@ C
         RELAXAMB=.TRUE.
         NDAY=MJD-MJDS+1
 C Mar 23, 2020
-      CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
-     &             DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
+        CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
+     &              DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
+c 2020Apr16 : day boundary AR NL jumps handling
+        DO JGNSS=1,4
+         IF( IGNSSREF(JGNSS) .NE. 0 .AND.
+     &       PRDC(9,IGNSSREF(JGNSS)) .NE. 0.D0 ) THEN
+          DN12REF(JGNSS) = DN12REF(JGNSS) +
+     &       (PRDC(9,IGNSSREF(JGNSS))-PRDCREF(JGNSS))/AL4
+          PRDCREF(JGNSS)=PRDC(9,IGNSSREF(JGNSS))
+         ENDIF
+        END DO
+c 2020Apr16 : day boundary AR NL jumps handling
 C
 C----------------------------------------------------------------------
 C       READ EPHEMERIS AND STORE IN TABLE
@@ -4172,7 +4256,10 @@ C 1MS JUMPS HAVE ALREADY BEEN CHECKED AND POSSIBLY CORRECTED
 C
 C LOOP OVER CONSTELLATIONS: 1: GPS 2: GLN
 C
-       DO CMISC=1,2
+c 2020Apr16 : day boundary AR NL jumps handling
+c      DO CMISC=1,2
+       DO CMISC=1,3
+c 2020Apr16 : day boundary AR NL jumps handling
         IF( NMISC(CMISC) .GT. 0 ) THEN
          NMISCRGRP=1
          NMISCPGRP=1
@@ -4273,7 +4360,10 @@ C
 C PHASE GROUPS
 C
          DO I= 1,NMISC(CMISC)
-          IF(MISCFACTP.GT. 0.D0 .AND. 
+c 2020Apr16 : day boundary AR NL jumps handling
+c         IF(MISCFACTP.GT. 0.D0 .AND. 
+          IF(MISCFACTP.GT. 0.D0 .AND. KP.GT.0 .AND.
+c 2020Apr16 : day boundary AR NL jumps handling
      &       IMISCP(I,CMISC) .GT. 0 .AND. PRDPOSQLT .LT. 6*SDCP ) THEN
 C IS NEW GROUP? FINALIZE STATS AND ADD GROUP
            IF( ABS(MISCP(IMISCP(I,CMISC))-MISCP(IMISCP(KP,CMISC))).GT.
@@ -4309,7 +4399,10 @@ C ASSIGN GROUP INDEX AND GATHER STATS
      &    'PHASE MISCLOSURE :',
      &    IMISCP_GRP(I),ISVO(ABS(IMISCP(I,CMISC))),
      &    MISCP(ABS(IMISCP(I,CMISC))),
-     &    DCPAMB(ISVO(ABS(IMISCP(I,CMISC)))),
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &    DCPAMB(ISVO(ABS(IMISCP(I,CMISC)))),
+     &    CPAMB(ISVO(ABS(IMISCP(I,CMISC)))),
+c 2020Apr16 : day boundary AR NL jumps handling
      &    SCPAMB(ISVO(ABS(IMISCP(I,CMISC))))
          END DO
 C FINALIZE LAST PHASE GROUP STATS
@@ -4481,8 +4574,25 @@ C SAVE PX MATRIX IN CASE OF EPOCH OR OUTLIER REJECTIONS
           END DO
          END DO
          IF( RELAXAMB .AND. SO.GT.0.D0 ) THEN
+c 2020Apr16 : day boundary AR NL jumps handling
+C DAY BOUNDARY AMBIGUITY MANAGEMENT
+          if(ipc.ge.1) write(*,*) "DAY-BOUNDARY AMBIGUITY MANAGEMENT"
+c 2020Apr16 : day boundary AR NL jumps handling
 C BUILD COMMON OLD AND NEW FIXABLE SAT LIST
           NSVCOMN=0
+c 2020Apr16 : day boundary AR NL jumps handling
+C RISING SATELLITES ONLY NEED TO BE REPORTED
+          IF(ipc.ge.1) THEN
+           DO I=1,NSVO
+            K=0
+            DO J=1,NSVOL
+             IF(ISVOL(J).EQ.ISVO(I)) K=J
+            END DO
+            IF(K.EQ.0)
+     &      write(*,*) "SKIP RISING  ",ISVO(I)
+           END DO
+          ENDIF
+c 2020Apr16 : day boundary AR NL jumps handling
           DO I=1,NSVOL
            K=0
            DO J=1,NSVO
@@ -4493,148 +4603,303 @@ C BUILD COMMON OLD AND NEW FIXABLE SAT LIST
              IDXO(NSVCOMN)=I
             ENDIF
            END DO
+C SETTING SATELLITES
            IF(K.EQ.0) THEN
             SVRELAX(I)=.TRUE.
-            if(ipc.ge.1)write(*,*) "SKIP UNCOMMON",ISVOL(I)
+            if(ipc.ge.1)write(*,*) "SKIP SETTING ",ISVOL(I)
+C NON-AR SATELLITES
            ELSE IF( PRDC(9,ISVO(K)).EQ.0.D0 ) THEN
             SVRELAX(I)=.TRUE.
             NSVCOMN=NSVCOMN-1
             if(ipc.ge.1)write(*,*) "SKIP   NON-AR",ISVOL(I)
+C UNFIXED OR DEWEIGHTED SATELLITES
            ELSE IF(PL(IOBTYP*(K-1)+1,IOBTYP*(K-1)+1)*SDPR**2
      &      .LT. 1.D-20.OR.PL(IOBTYP*K,IOBTYP*K)*SDCP**2.LT.
-     &      1.D-20.OR.PX(NFPAR+I,NFPAR+I).GT.1.1D-6) THEN
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &      1.D-20.OR.PX(NFPAR+I,NFPAR+I).GT.1.1D-6) THEN
+     &      1.D-20.OR.PX(NFPAR+I,NFPAR+I).GT.1.D-6) THEN
+c 2020Apr16 : day boundary AR NL jumps handling
             SVRELAX(I)=.TRUE.
             NSVCOMN=NSVCOMN-1
             if(ipc.ge.1)write(*,*) "SKIP DWT/UNFX",ISVOL(I)
+C COMMON FIXED SATELLITES
+C BY DEFAULT ALL WILL BE KEPT: THIS IS REVISED BELOW
            ELSE
             if(ipc.ge.1)write(*,*) "COMMON FIX SV",ISVOL(I)
             SVRELAX(I)=.FALSE.
            ENDIF
           END DO
-C FIND HIGHEST ELEVATION SATELLITE IN COMMON LIST
-          IL=0
-          DO I=1,NSVCOMN
-           IF( I.EQ.1 ) THEN
-            IL=I
-            if(ipc.ge.1)write(*,*)
-     &      "SELECT",ISVO(IDXN(I)),EL(IDXN(I))
-           ENDIF
-           IF(EL(IDXN(I)).GT.EL(IDXN(IL)))THEN
-            IL=I
-            if(ipc.ge.1)write(*,*)
-     &      "SELECT",ISVO(IDXN(I)),EL(IDXN(I)),">",EL(IDXN(IL))
-           ELSE
-            if(ipc.ge.1)write(*,*)
-     &      "SKIP  ",ISVO(IDXN(I)),EL(IDXN(I)),"<=",EL(IDXN(IL))
-           ENDIF
-          END DO
-C TEST PHASE MISCLOSURES ARE IN INTEGER NL WAVELENGTH GROUPS WITH
-C RESPECT TO HIGHEST FIXED SAT
-C ONLY IF ANTENNA ACCELERATION ALLOWS <3cm QUALITY EXTRAPOLATION
+c 2020Apr16 : day boundary AR NL jumps handling - begin
+C
+C FOR EACH CONSTELLATION
+C
           NFIXGRP=0
-          MNRELAX=NSVOL-NSVCOMN
-          IF( PRDPOSQLT .LT. 0.03D0 ) THEN
-           DO I=1,NSVCOMN
-            DMISCPNL=DINT((MISCP(IDXN(I))-MISCP(IDXN(IL)))/NLWL+
-     &                    SIGN(0.5D0,MISCP(IDXN(I))-MISCP(IDXN(IL))))
-            IF( ABS((MISCP(IDXN(I))-MISCP(IDXN(IL)))/NLWL-DMISCPNL)
-     &          .LT.0.1D0 ) NFIXGRP=NFIXGRP+1
-            IF( DMISCPNL.NE.0 .OR.
-     &          ABS((MISCP(IDXN(I))-MISCP(IDXN(IL)))/NLWL-DMISCPNL)
-     &          .GE.0.1D0 ) MNRELAX=MNRELAX+1
-           END DO
-           if(ipc.ge.1.and.il.gt.0)
-     &     write(*,*) 'GROUP NL TEST:',ISVO(IDXN(IL)),
-     &                NSVCOMN,NFIXGRP,MNRELAX
-          ENDIF
-C TRY GROUP RELAXING WHEN ENOUGH GROUPED SATS
-          IF(NFIXGRP.GE.3) THEN
-C LOOK FOR LARGEST GROUP
-           DO I=1,NSVCOMN
-            NRELAX=NSVOL-NSVCOMN
-            DO J=1,NSVCOMN
-             DMISCPNL=DINT((MISCP(IDXN(I))-MISCP(IDXN(J)))/NLWL+
-     &                     SIGN(0.5D0,MISCP(IDXN(I))-MISCP(IDXN(J))))
-             IF( ABS(DMISCPNL).GT.0.D0.OR.
-     &           ABS((MISCP(IDXN(I))-MISCP(IDXN(J)))/NLWL-DMISCPNL)
-     &           .GE.0.1D0 ) NRELAX=NRELAX+1
-            END DO
-            IF( NRELAX.LT.MNRELAX) THEN
-             IL=I
-             MNRELAX=NRELAX
-            ENDIF
-           END DO
-C WHEN LARGEST GROUP IS LARGE ENOUGH SET RELAX FLAGS
-           IF(NSVOL-MNRELAX.GT.1) THEN
-            DO I=1,NSVCOMN
-             DMISCPNL=DINT((MISCP(IDXN(I))-MISCP(IDXN(IL)))/NLWL+
-     &                     SIGN(0.5D0,MISCP(IDXN(I))-MISCP(IDXN(IL))))
-             IF( ABS(DMISCPNL).GT.0.D0.OR.
-     &           ABS((MISCP(IDXN(I))-MISCP(IDXN(IL)))/NLWL-DMISCPNL)
-     &           .GE.0.1D0 ) THEN
-              SVRELAX(IDXO(I))=.TRUE.
-              if(ipc.ge.1)write(*,*) 'SKIPMS:', ISVOL(IDXO(I)),
-     &        MISCP(IDXN(I))/NLWL,MISCP(IDXN(IL))/NLWL,
-     &        (MISCP(IDXN(I))-MISCP(IDXN(IL)))/NLWL
-             ELSE
-              if(ipc.ge.1)write(*,*) 'KEEPMS:', ISVOL(IDXO(I)),
-     &        MISCP(IDXN(I))/NLWL,MISCP(IDXN(IL))/NLWL,
-     &        (MISCP(IDXN(I))-MISCP(IDXN(IL)))/NLWL
-C SELECT ONE OF THE GROUP MEMBER AS REF
-             ENDIF
-            END DO
-            if(ipc.ge.1)write(*,*) 'SELECT GROUP:',
-     &      ISVOL(IDXO(IL)),NSVOL-MNRELAX
-           ENDIF
-C IF PHASE MISCLOSURE GROUP FAILED TRY SINGLY FIXED SATELLITE
-          ELSE
-C TRY PREVIOUSLY FIXED SATELLITE AS FOLLOWS:
-C ON BWD TRY FWD FIXED SAT
-           IK=0
-           IF( IDIR.LT.0 .AND. IPRNFX(NDAY) .NE. 0 ) THEN
-             DO I=1,NSVCOMN
-              IF(IPRNFX(NDAY).EQ.ISVO(IDXN(I))) IK=I
+          DO CMISC=1,4
+           IDD(CMISC)=0
+           MINMISCPNL(CMISC)=0.D0
+           MAXMISCPNL(CMISC)=0.D0
+           AVGMISCPNL(CMISC)=0.D0
+           CNTMISCPNL(CMISC)=0
+C
+C IF AN INITIAL PHASE GROUP WAS IDENTIFIED EARLIER
+C TEST PHASE MISCLOSURES ARE IN INTEGER NL WAVELENGTH GROUPS
+C FINDING LARGEST GROUP
+C
+           IF( NMISC(CMISC) .GT. 0 ) THEN
+            KP=0
+C FIND FIRST VALID PHASE MISCLOSURE
+            DO I=NMISC(CMISC),1,-1
+             KR=0
+             DO J=1,NSVCOMN
+              IF( IDXN(J) .EQ. IMISCP(I,CMISC) ) KR=J
              END DO
-           ENDIF
+             IF( KR .GT. 0 ) KP=I
+            END DO
+C IF FOUND
+            IF( KP .GT. 0 ) THEN
+C INITIALIZE FIRST GROUP AVERAGE & COUNT
+             AMISCPNL=MISCP(IMISCP(KP,CMISC))
+             NMISCPNL=1
+             ID=KR
+C LOOP OVER PHASE MISCLOSURES
+             DO I=KP+1,NMISC(CMISC)
+              KR=0
+C IS IT IN THE COMMON SAT LIST
+              DO J=1,NSVCOMN
+               IF( IDXN(J) .EQ. IMISCP(I,CMISC) ) KR=J
+              END DO
+C ONLY FOR COMMON SAT LIST
+              IF( KR .GT. 0 ) THEN
+C DETECT 0,75*NL WIDELANE JUMPS FROM RUNNING GROUP AVERAGE
+               IF( DABS(MISCP(IMISCP(I,CMISC))-AMISCPNL)/NLWL(CMISC)
+     &             .GT.0.75D0 ) THEN
+C IF NEW GROUP IS GREATER THAN PREVIOUS, UPDATE
+                IF( NMISCPNL .GT. CNTMISCPNL(CMISC) ) THEN
+                 IDD(CMISC)=ID
+                 CNTMISCPNL(CMISC)=NMISCPNL
+                 AVGMISCPNL(CMISC)=AMISCPNL
+                 if(ipc.ge.1 )
+     &           write(*,*) 'GROUP SELECT',CMISC,
+     &                      ISVO(IDXN(ID)),NMISCPNL,
+     &                      AMISCPNL
+                ELSE
+                 if(ipc.ge.1 )
+     &           write(*,*) 'GROUP SKIP',CMISC,
+     &                      ISVO(IDXN(ID)),NMISCPNL,
+     &                      AMISCPNL
+                ENDIF
+C INITIALISE NEXT GROUP AVERAGE & COUNT
+                AMISCPNL=0.D0
+                NMISCPNL=0
+               END IF
+C RUNNING GROUP AVERAGE & COUNT
+               AMISCPNL=(NMISCPNL*AMISCPNL+MISCP(IMISCP(I,CMISC)))
+     &                  /(NMISCPNL+1)
+               NMISCPNL=NMISCPNL+1
+               ID=KR
+               KP=I
+              END IF
+             ENDDO
+C IF LAST GROUP IS GREATER THAN PREVIOUS, UPDATE
+             IF(NMISCPNL.GT.CNTMISCPNL(CMISC)) THEN
+              IDD(CMISC)=ID
+              CNTMISCPNL(CMISC)=NMISCPNL
+              AVGMISCPNL(CMISC)=AMISCPNL
+              if(ipc.ge.1 )
+     &        write(*,*) 'GROUP SELECT',CMISC,
+     &                   ISVO(IDXN(ID)),NMISCPNL,
+     &                   AMISCPNL
+             ELSE IF(NMISCPNL.GT.0) THEN
+              if(ipc.ge.1 )
+     &        write(*,*) 'GROUP SKIP',CMISC,
+     &                   ISVO(IDXN(ID)),NMISCPNL,
+     &                   AMISCPNL
+             ENDIF
+C REQUIRE LARGEST GROUP LARGER THAN 1
+             IF( CNTMISCPNL(CMISC) .LT. 2 ) IDD(CMISC)=0
+C IF WE HAVE A GROUP, LOOK UP PHASE MISC CLOSEST TO GROUP AVERAGE
+             IF(IDD(CMISC).NE.0) THEN
+              FMISCPNL=DABS(MISCP(IDXN(IDD(CMISC)))
+     &                      -AVGMISCPNL(CMISC))
+              DO J=1,NSVCOMN
+               JGNSS = (ISVO(IDXN(J))-1)/32+1
+               IF((JGNSS.EQ.4.AND.ISVO(IDXN(J)).LE.100).OR.
+     &            (JGNSS.EQ.5.AND.ISVO(IDXN(J)).LE.136)) JGNSS= JGNSS-1
+               IF(JGNSS.EQ.CMISC.AND.
+     &            DABS(MISCP(IDXN(J))-AVGMISCPNL(CMISC))
+     &            .LT.FMISCPNL) THEN
+                IDD(CMISC)=J
+                FMISCPNL=DABS(MISCP(IDXN(IDD(CMISC)))
+     &                        -AVGMISCPNL(CMISC))
+               ENDIF
+              ENDDO
+              if(ipc.ge.1)
+     &         write(*,*) "FINAL GROUP",
+     &         CMISC,ISVO(IDXN(IDD(CMISC))),CNTMISCPNL(CMISC),
+     &         AVGMISCPNL(CMISC)
+             END IF
+            END IF
+           END IF
+C WHEN GROUP SELECTION FAILED:
 C  ON FWD, TRY NDAY-1 SELECTION
 C  ON BWD, IF FWD SELECTION FAILED, TRY NDAY+1 SELECTION
-          IF( IK .EQ. 0 .AND. IPRNFX(NDAY-IDIR) .NE. 0 ) THEN
-           DO I=1,NSVCOMN
-            IF(IPRNFX(NDAY-IDIR).EQ.ISVO(IDXN(I))) IK=I
-           END DO
-          ENDIF
-C USE WHATEVER WAS SELECTED
-           IF(IK.NE.0) THEN
-            NFIXGRP=1
-            IL=IK
-            if(ipc.ge.1)write(*,*) "PRVREF",ISVO(IDXN(IK))
+           IF( IDD(CMISC) .EQ. 0 .AND.
+     &         IPRNFX(CMISC,NDAY-IDIR) .NE. 0 ) THEN
+            DO I=1,NSVCOMN
+             JGNSS = (ISVO(IDXN(I))-1)/32+1
+             IF((JGNSS.EQ.4.AND.ISVO(IDXN(I)).LE.100).OR.
+     &          (JGNSS.EQ.5.AND.ISVO(IDXN(I)).LE.136)) JGNSS= JGNSS-1
+             IF(JGNSS.EQ.CMISC.AND.IDD(CMISC).EQ.0.AND.
+     &          IPRNFX(CMISC,NDAY-IDIR).EQ.ISVO(IDXN(I))) IDD(CMISC)=I
+            END DO
+            if(IDD(CMISC).NE.0.AND.ipc.ge.1)
+     &        write(*,*) "PREV DAY SELECT",CMISC,ISVO(IDXN(IDD(CMISC)))
            ENDIF
-C FLAG ALL BUT SELECTED SATELLITE, IF ANY
-           DO I=1,NSVCOMN
-            IF(I.NE.IL) SVRELAX(IDXO(I))=.TRUE.
-           END DO
-          ENDIF
-C RELAX LIST OF FLAGGED SATELLITES
-          DO I=1,NSVOL
-           IF(SVRELAX(I)) THEN
-            PX(NFPAR+I,NFPAR+I)= PX(NFPAR+I,NFPAR+I) + 25.D-4/SO
-            if(ipc.ge.1)write(*,*) "AMBS RELAXED BY 5CM",ISVOL(I),
-     &                 SQRT(PX(NFPAR+I,NFPAR+I))
+C ALL OTHER SELECTION FAILED:
+C  TRY THE HIGHEST ELEVATION SATELLITE
+           IF( IDD(CMISC) .EQ. 0 ) THEN
+            DO I=1,NSVCOMN
+             JGNSS = (ISVO(IDXN(I))-1)/32+1
+             IF((JGNSS.EQ.4.AND.ISVO(IDXN(I)).LE.100).OR.
+     &          (JGNSS.EQ.5.AND.ISVO(IDXN(I)).LE.136)) JGNSS= JGNSS-1
+             IF(JGNSS.EQ.CMISC) THEN
+              IF( IDD(CMISC).EQ.0 ) THEN
+               IDD(CMISC)=I
+               if(ipc.ge.2)write(*,*)
+     &          "SELECT",ISVO(IDXN(I)),EL(IDXN(I))
+              ELSE IF(EL(IDXN(I)).GT.EL(IDXN(IDD(CMISC))))THEN
+               if(ipc.ge.2)write(*,*) "SELECT",
+     &          ISVO(IDXN(I)),EL(IDXN(I)),">",EL(IDXN(IDD(CMISC)))
+               IDD(CMISC)=I
+              ELSE
+               if(ipc.ge.2)write(*,*) "SKIP  ",
+     &          ISVO(IDXN(I)),EL(IDXN(I)),"<=",EL(IDXN(IDD(CMISC)))
+              ENDIF
+             ENDIF
+            END DO
+            if(IDD(CMISC).NE.0.AND.ipc.ge.1)
+     &        write(*,*) "HIGHEST ELEV SELECT",
+     &                   CMISC,ISVO(IDXN(IDD(CMISC)))
+           ENDIF
+C USE WHATEVER WAS SELECTED, IF ANY
+           IF(IDD(CMISC).NE.0) THEN
+            NFIXGRP=NFIXGRP+1
+C STORE THE SELECTED REF SAT FOR FUTURE CONTINUITY MAINTENANCE
+            IPRNFX(CMISC,NDAY)=ISVO(IDXN(IDD(CMISC)))
+           ENDIF
+          END DO
+          DO CMISC=1,4
+           AVGMISCPNL(CMISC)=0.D0
+           CNTMISCPNL(CMISC)=0
+          END DO
+C FLAG ALL BUT THE SELECTED SATELLITES, IF ANY
+          DO I=1,NSVCOMN
+           JGNSS = (ISVO(IDXN(I))-1)/32+1
+           IF((JGNSS.EQ.4.AND.ISVO(IDXN(I)).LE.100).OR.
+     &        (JGNSS.EQ.5.AND.ISVO(IDXN(I)).LE.136)) JGNSS= JGNSS-1
+C CASE OF NO REF SATELLITE IN CONSTELLATION: ALL RELAXED
+           IF(IDD(JGNSS).EQ.0) THEN
+            SVRELAX(IDXO(I))=.TRUE.
+C ALL COMMON SATELLITES SATELLITE
            ELSE
-            if(ipc.ge.1)write(*,*) "KEEPING AMB FIXED  ",ISVOL(I),
+C NON-REF SATS ARE RELAXED
+            IF(IDD(JGNSS).NE.I) SVRELAX(IDXO(I))=.TRUE.
+C PROVIDED STATION ACCELERATION IS WITHIN BOUNDS
+C KEEP ALL FIXED SATELLITES IN CONSTELLATION WITH MISCLOSURE
+C WITHIN +- 0.35*NLWL OF THE REFERENCE SATELLITE
+            IF( PRDPOSQLT .LT. 0.03D0 .AND. NMISC(JGNSS) .NE. 0 ) THEN
+             DMISCPNL=
+     &        DINT((MISCP(IDXN(I))-MISCP(IDXN(IDD(JGNSS))))/NLWL(JGNSS)
+     &             +DSIGN(0.5D0,MISCP(IDXN(I))-MISCP(IDXN(IDD(JGNSS)))))
+              FMISCPNL=
+     &         (MISCP(IDXN(I))-MISCP(IDXN(IDD(JGNSS))))/NLWL(JGNSS)
+     &         -DMISCPNL
+             IF( DABS(FMISCPNL).LT.0.35D0 ) SVRELAX(IDXO(I))=.FALSE.
+             if(ipc.ge.1)
+     &       write(*,'(1x,a,2i4,5F12.6)')
+     &         'MISCDIFF NL:', ISVO(IDXN(I)),
+     &         ISVO(IDXN(IDD(JGNSS))),MISCP(IDXN(I))/NLWL(JGNSS),
+     &         MISCP(IDXN(IDD(JGNSS)))/NLWL(JGNSS),
+     &         (MISCP(IDXN(I))-MISCP(IDXN(IDD(JGNSS))))/NLWL(JGNSS),
+     &         DMISCPNL,FMISCPNL
+C COMPUTE AVERAGE MISCLOSURE OF GROUP SATELLITES
+             IF( .NOT. SVRELAX(IDXO(I))
+     &           .AND. DABS(DMISCPNL) .LT. 1.D-4 ) THEN
+              AVGMISCPNL(JGNSS)=
+     &         (CNTMISCPNL(JGNSS)*AVGMISCPNL(JGNSS)+MISCP(IDXN(I)))
+     &         /(CNTMISCPNL(JGNSS)+1)
+              CNTMISCPNL(JGNSS)=CNTMISCPNL(JGNSS)+1
+             ENDIF
+            ENDIF
+           ENDIF
+          END DO
+C APPLY THE MISCLOSURE FULL CYCLE CORRECTION WRT GROUP AVERAGE
+C COMPUTE MIN, MAX MISCLOSURE AFTER CORRECTION FROM ALL SATS
+          DO I= INSVO, NSVO
+           JGNSS = (ISVO(I)-1)/32+1
+           IF((JGNSS.EQ.4.AND.ISVO(I).LE.100).OR.
+     &        (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
+           IOBPR = I*2-1
+           IOBCP = I*2
+           CALL UPDSUW ( ISVO(I), IOBPR, IOBCP, IDX, EL,
+     &           IPEPACC, PRDC, SDCP, SUWCP, SUWPR, C, PI) 
+           IF( CNTMISCPNL(JGNSS) .GT. 0 ) THEN
+            DMISCPNL=
+     &       DINT((MISCP(I)-AVGMISCPNL(JGNSS))/NLWL(JGNSS)
+     &            +DSIGN(0.5D0,MISCP(I)-AVGMISCPNL(JGNSS)))
+            FMISCPNL=
+     &       (MISCP(I)-AVGMISCPNL(JGNSS))/NLWL(JGNSS)
+     &       -DMISCPNL
+            if(ipc.ge.1)
+     &      write(*,'(a,i4,2F12.6,a,2F12.6,a,2F12.6)')
+     &        'MISCCORR m :', ISVO(I), DMISCPNL,FMISCPNL," NL :",
+     &        MISCP(I),CPAMB(ISVO(I))," => ",MISCP(I)-DMISCPNL
+     &        *NLWL(JGNSS),CPAMB(ISVO(I))+DMISCPNL*NLWL(JGNSS)
+            W(IOBCP,1)=W(IOBCP,1)-DMISCPNL*NLWL(JGNSS)*SUWCP
+            MISCP(I)=MISCP(I)-DMISCPNL*NLWL(JGNSS)
+            CPAMB(ISVO(I))=CPAMB(ISVO(I))+DMISCPNL*NLWL(JGNSS)
+           ENDIF
+           MINMISCPNL(JGNSS)=MIN(MINMISCPNL(JGNSS),W(IOBCP,1)/SUWCP)
+           MAXMISCPNL(JGNSS)=MAX(MAXMISCPNL(JGNSS),W(IOBCP,1)/SUWCP)
+          END DO
+C COMPUTE THE RELAXATION FACTOR BASED ON MISCLOSURE RANGE
+          DO CMISC=1,4
+           SMDCLK(CMISC)=
+     &        MAX(0.05D0,MAXMISCPNL(CMISC)-MINMISCPNL(CMISC))*1.D9/C
+           if(ipc.ge.1) write(*,'(1x,a,i2,f6.1,a,f6.1)')
+     &     "AMB RELAXATION (>= 5cm) :",CMISC,
+     &     100*(MAXMISCPNL(CMISC)-MINMISCPNL(CMISC))," => ",
+     &     100*SMDCLK(CMISC)*C/1.D9
+          END DO
+C RELAX LIST OF FLAGGED SATELLITES : 5cm ~ ,16ns
+          DO I=1,NSVOL
+           JGNSS = (ISVOL(I)-1)/32+1
+           IF((JGNSS.EQ.4.AND.ISVOL(I).LE.100).OR.
+     &        (JGNSS.EQ.5.AND.ISVOL(I).LE.136)) JGNSS= JGNSS-1
+           IF(SVRELAX(I)) THEN
+            IF( CNTMISCPNL(JGNSS) .EQ. 0 .OR.
+     &          PX(NFPAR+I,NFPAR+I) .LE. 1.D-06 ) THEN
+             PX(NFPAR+I,NFPAR+I)= PX(NFPAR+I,NFPAR+I)
+     &                            + SMDCLK(JGNSS)**2/SO
+             if(ipc.ge.1)write(*,'(1x,a,i4,F6.1,D10.2)')
+     &         "AMB RELAXED :",ISVOL(I),100*SMDCLK(JGNSS)*C/1.D9,
+     &                 SQRT(PX(NFPAR+I,NFPAR+I))
+            ELSE
+             if(ipc.ge.1)write(*,'(1x,a,i4,6X,D10.2)')
+     &         "AMB UNFIXED :",ISVOL(I),
+     &                 SQRT(PX(NFPAR+I,NFPAR+I))
+            ENDIF
+           ELSE
+            if(ipc.ge.1)write(*,'(1x,a,i4,6X,D10.2)')
+     &         "AMB FIXED   :",ISVOL(I),
      &                 SQRT(PX(NFPAR+I,NFPAR+I))
            ENDIF
           END DO
-C STORE ONE OF THE SELECTED REF SAT FOR FUTURE CONTINUITY MAINTENANCE
-          IF(IL.EQ.0) THEN
-           IPRNFX(NDAY)=0
-          ELSE IF( IDIR.GT.0 .OR.
-     &             IPRNFX(NDAY-IDIR).NE.ISVOL(IDXO(IL)) ) THEN
-           IPRNFX(NDAY)=ISVOL(IDXO(IL))
-          ENDIF
-C SHOULD WE RESET DN12REF? COMMENT OR UNCOMMENT FOLLOWING IPRNREF SETTING
-C         IF(IL.NE.0) IPRNREF=ISVOL(IDXO(IL))
+          if(ipc.ge.1)
+     & write(*,*) 'PRNFIX',NDAY,DIR((1-IDIR)/2+1),(IPRNFX(J,NDAY),J=1,4)
+c 2020Apr16 : day boundary AR NL jumps handling - end
          ENDIF
+C
          CALL ADDPX ( NSVO, ISVO, NSVOL, ISVOL, NPAR, NFPAR,
      &               IPOSSOL, ICLKSOL, ITRPSOL, IOBTYP, XRVRMS, 
      &               PX, OPX, IPX, IMIX , SDPR, CPAMB, PL, 
@@ -4648,6 +4913,9 @@ C Feb 23, 2019
 C        ID = 0
          DO I= 1, 4
           IDD(I) = 0
+c 2020Apr16 : day boundary AR NL jumps handling
+          NCAMBFX(I)=0
+c 2020Apr16 : day boundary AR NL jumps handling
          ENDDO
          IF(IFREQ.GE.3.AND..NOT.INIEPO.AND.IOBTYP.EQ.2.AND.
      &      (NFIX.GT.0.OR.IDIR.LT.0).AND.
@@ -4788,6 +5056,10 @@ C          GO TO 210
 C Feb 23, 2019
           ENDDO
           IF((IDD(1)+IDD(2)+IDD(3)+IDD(4)).NE.0.0D0.AND.NFIX.NE.0) THEN
+c 2020Apr16 : day boundary AR NL jumps handling
+            IF(IPC.GE.1)
+     &      write(*,*) 'PRNFIX',NDAY,DIR((1-IDIR)/2+1),IPRNREF
+c 2020Apr16 : day boundary AR NL jumps handling
             CALL SPIN ( PX, NPAR, MAXPAR2, SINEL, J   )           
             GO TO 210
           ENDIF
@@ -4833,9 +5105,15 @@ C           DN12REF= FLTSUM(22,iprn) + PRDC(9,IPRN)/AL4
 C           PRDCREF= PRDC(9,IPRN)
             DN12REF(JGNSS)= FLTSUM(22,iprn) + PRDC(9,IPRN)/AL4            
             PRDCREF(JGNSS)= PRDC(9,IPRN)
+c 2020Apr16 : day boundary AR NL jumps handling
+            IGNSSREF(JGNSS)=IPRN
+c 2020Apr16 : day boundary AR NL jumps handling
       if(ipc.ge.1)write(*,*)"AR WL REF INIT:",IPRN,DN12REF(JGNSS)
 C SAVE FIRST FWD REFERENCE SELECTION
-            IF(IDIR.GT.0.AND.NDAY.EQ.1)IPRNFX(NDAY)=IPRN
+c 2020Apr16 : day boundary AR NL jumps handling
+c           IF(IDIR.GT.0.AND.NDAY.EQ.1)IPRNFX(NDAY)=IPRN
+            IF(IDIR.GT.0.AND.NDAY.EQ.1)IPRNFX(JGNSS,NDAY)=IPRN
+c 2020Apr16 : day boundary AR NL jumps handling
            ELSE                                                                    ELSE 4 if filtered
       if(ipc.ge.1)write(*,*) "AR REF SAT LOST, SET TO 0",IPRN
 C Feb 23, 2019
@@ -5037,13 +5315,22 @@ C Feb 23, 2019
 C          ID = 0
            DO I= 1, 4
            IDD(I) = 0
+c 2020Apr16 : day boundary AR NL jumps handling
+           NCAMBFX(I)=0
+c 2020Apr16 : day boundary AR NL jumps handling
            ENDDO
            DO I=1, NSVO                                                              DO 2 Count fix & ref
 C Feb 23, 219
             JGNSS = (ISVO(I)-1)/32+1
             IF((JGNSS.EQ.4.AND.ISVO(I).LE.100).OR.
      &      (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
-            IF(PX(NFPAR+I,NFPAR+I).GE..9 D 6)  NAMBFX= NAMBFX+1
+c 2020Apr16 : day boundary AR NL jumps handling
+c           IF(PX(NFPAR+I,NFPAR+I).GE..9 D 6)  NAMBFX= NAMBFX+1
+            IF(PX(NFPAR+I,NFPAR+I).GE..9 D 6) THEN
+             NCAMBFX(JGNSS)= NCAMBFX(JGNSS)+1
+             NAMBFX= NAMBFX+1
+            ENDIF
+c 2020Apr16 : day boundary AR NL jumps handling
 C Feb 23, 2019 - start
 C           IF(ISVO(I).EQ.IPRNREF) ID=IPRNREF
             IF(ISVO(I).EQ.IPRNREF(JGNSS)) THEN
@@ -5057,9 +5344,18 @@ C Feb 23, 2019
 C          IPRNREF = ID
            do i=1,4
            IPRNREF(I)= IDD(I)
+c 2020Apr16 : day boundary AR NL jumps handling
+           FIXC(I)=0
+           IF(NMISC(I).GT.0) FIXC(I)=100*NCAMBFX(I)/NMISC(I)
+c 2020Apr16 : day boundary AR NL jumps handling
            enddo 
            write(*,*)' IPRNREF',IPRNREF,' NO OBS SAT:',NSVO,
-     &       ' AMB FIXED:',NAMBFX, ' = ',100* NAMBFX/NSVO, ' %'
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &       ' AMB FIXED:',NAMBFX, ' = ',100* NAMBFX/NSVO, ' %'
+     &       ' AMB FIXED:',NAMBFX, ' = ',
+     &       100*NAMBFX/NSVO, '%',
+     &       (FIXC(I), '%',I=1,4)
+c 2020Apr16 : day boundary AR NL jumps handling
           ENDIF                                                                  END IF 1 when ar
 C
         SDTROP= SDTROP/SQRT(1.d0+RXVEL/10.d0)*
@@ -5752,7 +6048,10 @@ C Feb 23, 2019
             IF((JGNSS.EQ.4.AND.ISVO(IO).LE.100).OR.
      &      (JGNSS.EQ.5.AND.ISVO(IO).LE.136)) JGNSS= JGNSS-1
           NRC(ISVO(IO),IARC(ISVO(IO)))=NRC(ISVO(IO),IARC(ISVO(IO)))+1
-          IF( PX(NFPAR+IO,NFPAR+IO).GT..9D6 )
+c 2020Apr16 : day boundary AR NL jumps handling
+c         IF( PX(NFPAR+IO,NFPAR+IO).GT..9D6 )
+          IF( PX(NFPAR+IO,NFPAR+IO).GE..9D6 )
+c 2020Apr16 : day boundary AR NL jumps handling
      &     NRCFX(ISVO(IO),IARC(ISVO(IO)))=
      &                               NRCFX(ISVO(IO),IARC(ISVO(IO)))+1
 C RELY ON THE NEW FLTOBS CY SLIP CORRECTIONS/DETECTIONS ONLY
@@ -5777,7 +6076,7 @@ C
           CLKAMB(ISVO(IO)) = .FALSE.
           END IF
           IAMB(ISVO(IO)) = NEWAMB
-        IF (NEWAMB .NE. 0) CPIAMB(ISVO(IO)) = CPAMB(ISVO(IO))
+          IF (NEWAMB .NE. 0) CPIAMB(ISVO(IO)) = CPAMB(ISVO(IO))
           DCPAMB(ISVO(IO)) = CPAMB(ISVO(IO))-CPIAMB(ISVO(IO))
 C
 C       UPDATE THE SIGMAS OF UNIT WEIGHT
@@ -5848,6 +6147,12 @@ C
 C       IF CODE/CARRIER SOLUTION,
 C       COMPUTE STATISTIC ON AMBIGUITY RESIDUALS
 C
+c 2020Apr16 : new clock specific output
+      IAMBSUM=0
+      DO I=1,4
+       IAMBSUMS(I)=0
+      END DO
+c 2020Apr16 : new clock specific output
       IF ( IOBTYP .EQ. 2 ) THEN
          CALL AMSTAT (NSVO, ISVO, IAMB, VCPAMB, SCPAMB, 
      &                AMBRMS, AMBWRMS)
@@ -5855,12 +6160,23 @@ c!    WRITE(*,'(20I6)') (ISVO(I),I=1,NSVO)
 c!    WRITE(*,'(20I6)') (IAMB(ISVO(I)),I=1,NSVO)
 c!    WRITE(*,'(20F6.2)') (VCPAMB(ISVO(I)),I=1,NSVO)
 c!    WRITE(*,'(20F6.2)') (SCPAMB(ISVO(I)),I=1,NSVO)
-         IAMBSUM=0
+c 2020Apr16 : new clock specific output
+c        IAMBSUM=0
+c        DO I=1,NSVO
+c         IF( IAMB(ISVO(I)) .NE. 0 )
+c    &     IAMBSUM=IAMBSUM+1
+c        END DO
          DO I=1,NSVO
-          IF( IAMB(ISVO(I)) .NE. 0 )
-     &     IAMBSUM=IAMBSUM+1
-       END DO
-c!        WRITE(*,"(A3,3X,2(I2.2,':'),I2.2,'.',I3.3,3X,3F10.4)") 'AMB',
+          JGNSS = (ISVO(IO)-1)/32+1
+          IF((JGNSS.EQ.4.AND.ISVO(IO).LE.100).OR.
+     &       (JGNSS.EQ.5.AND.ISVO(IO).LE.136)) JGNSS= JGNSS-1
+          IF( IAMB(ISVO(I)) .NE. 0 ) THEN
+           IAMBSUM=IAMBSUM+1
+           IAMBSUMS(JGNSS)=IAMBSUMS(JGNSS)+1
+          ENDIF
+         END DO
+c 2020Apr16 : new clock specific output
+c!       WRITE(*,"(A3,3X,2(I2.2,':'),I2.2,'.',I3.3,3X,3F10.4)") 'AMB',
 c!   &           IHR,IMIN,INT(SEC),INT((SEC-INT(SEC))*1.D3),
 c!   &           IAMBSUM*1.D-1, AMBRMS,AMBWRMS
       END IF
@@ -6035,7 +6351,21 @@ C    POSITION STATISTICS COMPUTATION
 C
       IF(ISMEPO.EQ.1) THEN
         NFIX = NFIX + 1
-        IF(NAMBFX.GE.3 ) NEPFIX=NEPFIX+1
+c 2020Apr16 : day boundary AR NL jumps handling
+c       IF(NAMBFX.GE.3 ) NEPFIX=NEPFIX+1
+        IF(NGPS.GT.0) NCFIX(1)=NCFIX(1)+1
+        IF(NGLN.GT.0) NCFIX(2)=NCFIX(2)+1
+        IF(NGAL.GT.0) NCFIX(3)=NCFIX(3)+1
+        IF(NBEI.GT.0) NCFIX(4)=NCFIX(4)+1
+        IF( NAMBFX.GE.3 .OR.
+     &      (IDIR.LT.0.AND.UTTAG.EQ.ENDTTAG.AND.NAMBFX.GE.1 ) )
+     &    NEPFIX=NEPFIX+1
+        DO I=1,4
+         IF( NCAMBFX(I).GE.1
+c    &       .OR.(IDIR.LT.0.AND.UTTAG.EQ.ENDTTAG.AND.NCAMBFX(I).GE.1 )
+     &     ) NCEPFIX(I)=NCEPFIX(I)+1
+        ENDDO
+c 2020Apr16 : day boundary AR NL jumps handling
         CALL POSSIG ( XRVDIF, XRVAVG, XRVSUM, XRVSIG, NFIX )
         CALL POSSIG ( PLHDIF, PLHAVG, PLHSUM, PLHSIG, NFIX )
 C      
@@ -6114,14 +6444,17 @@ c!    WRITE(*,*) 'SEC,INT(SEC)',SEC,INT(SEC)
       IF( GAL ) GALCLK=GALCLK-CLKOFF2
       IF( BEI ) BEICLK=BEICLK-CLKOFF2
       ENDIF
+c 2020Apr16 : day boundary AR NL jumps handling
+c     IF(.NOT.IAROFF .AND. SMTHCLK) THEN
       IF(.NOT.IAROFF) THEN
-      IF( GPS ) GPSCLK=GPSCLK - RAVGALL(1)/C*1.D9
-C!! DO NOT CORRECT GLN, GAL, BEI CLKs FOR AVRG PR RESD's
+       IF( GPS ) GPSCLK=GPSCLK - RAVGALL(1)/C*1.D9
+       IF( GAL ) GALCLK=GALCLK - RAVGALL(3)/C*1.D9
+C!! DO NOT CORRECT GLN, BEI CLKs FOR AVRG PR RESD's
 C!! Code Beg ==================================================================
-C!!   IF( GLN ) GLNCLK=GLNCLK - RAVGALL(2)/.299792D0         
-C!!   IF( GAL ) GPSCLK=GPSCLK - RAVGALL(3)/C*1.D9
-C!!   IF( BEI ) BEICLK=BEICLK - RAVGALL(4)/C*1.D9
+C!!    IF( GLN ) GLNCLK=GLNCLK - RAVGALL(2)/C*1.D9
+C!!    IF( BEI ) BEICLK=BEICLK - RAVGALL(4)/C*1.D9
 C!! Code End ==================================================================
+c 2020Apr16 : day boundary AR NL jumps handling
       ENDIF
       IF(ISMEPO.EQ.1) THEN
         IF ( IREFIN .NE. IREFOUT ) THEN
@@ -6207,7 +6540,7 @@ C
      &          ,HORDION(2)
      &          ,HORDION(1)/C*1.D9, HORDION(3)/C*1.D9, RIFRATE,NAMBFX
      &          ,NSVDWGT
-           ELSE
+          ELSE
            WRITE(LPOS,2411) DIR((1-IDIR)/2+1),RFNAME, 
      &          STNA, JULD+FMJDDT,
      &          IYEAR, IMTH, IDAY, IHR, IMIN,
@@ -6229,7 +6562,21 @@ C
      &          ,HORDION(1)/C*1.D9, HORDION(3)/C*1.D9, RIFRATE,NAMBFX
      &          ,NSVDWGT
           END IF
-       END IF
+        END IF
+c 2020Apr16 : new clock specific output
+C OUTPUT FINAL CLK RESULT (FWD||BWD||SMThed)
+        IF( IDIR .LE. NDIR .OR. IPC .GE. 3 ) THEN
+         ID=0
+         IF(IDIR.LT.0.AND.SMTHCLK) ID=1
+         WRITE(LUCLK,2710) DIR((1-IDIR)/2+1+ID),STNA,JULD+FMJDDT,IYEAR,
+     &           IMTH, IDAY, IHR, IMIN,INT(DINT(SEC*1000+.5)/1000.),
+     &           MOD(INT(SEC*1000+0.5),1000),NSVO,IAMBSUM,NAMBFX,
+     &           NGPS,IAMBSUMS(1),NCAMBFX(1),GPSCLK,SGPSCLK,
+     &           NGLN,IAMBSUMS(2),NCAMBFX(2),GLNCLK,SGLNCLK,
+     &           NGAL,IAMBSUMS(3),NCAMBFX(3),GALCLK,SGALCLK,
+     &           NBEI,IAMBSUMS(4),NCAMBFX(4),BEICLK,SBEICLK
+        ENDIF
+c 2020Apr16 : new clock specific output
       END IF
 C
 370   CONTINUE
@@ -6417,10 +6764,28 @@ C COMPUTE FWD MEAN RES TO BE APPLIED TO BWD CLKS! (ESSENTIAL FOR AR)
         ENDDO
        END IF
       END DO
-      IF (NOBALL(1).GT.0)RAVGALL(1)= RAVGALL(1)/NOBALL(1)
-      IF (NOBALL(2).GT.0)RAVGALL(2)= RAVGALL(2)/NOBALL(2)
-      IF (NOBALL(3).GT.0)RAVGALL(3)= RAVGALL(3)/NOBALL(3)
-      IF (NOBALL(4).GT.0)RAVGALL(4)= RAVGALL(4)/NOBALL(4)
+c 2020Apr16 : day boundary AR NL jumps handling
+c     IF (NOBALL(1).GT.0)RAVGALL(1)= RAVGALL(1)/NOBALL(1)
+c     IF (NOBALL(2).GT.0)RAVGALL(2)= RAVGALL(2)/NOBALL(2)
+c     IF (NOBALL(3).GT.0)RAVGALL(3)= RAVGALL(3)/NOBALL(3)
+c     IF (NOBALL(4).GT.0)RAVGALL(4)= RAVGALL(4)/NOBALL(4)
+      DO ID=1,4
+       IF (NOBALL(ID).GT.0) THEN
+        RAVGALL(ID)= RAVGALL(ID)/NOBALL(ID)
+        IF(IDIR.EQ.-1.AND..NOT.IAROFF) THEN
+C ROUND AVERAGE CODE RESITUALS TO NEAREST NL WAVELENGTH
+         if(ipc.ge.1)
+     &   write(*,*) 'RAVGALL',ID,NOBALL(ID),RAVGALL(ID),
+     &    dint(dsign(0.5D0,RAVGALL(ID))+RAVGALL(ID)/NLWL(ID)),
+     &    RAVGALL(ID)/NLWL(ID)
+     &               -dint(dsign(0.5D0,RAVGALL(ID))+
+     &                           RAVGALL(ID)/NLWL(ID))
+         RAVGALL(ID)=NLWL(ID)*
+     &    dint(dsign(0.5D0,RAVGALL(ID))+RAVGALL(ID)/NLWL(ID))
+        ENDIF
+       ENDIF
+      ENDDO
+c 2020Apr16 : day boundary AR NL jumps handling
       IF (IDIR .GE. NDIR .AND. IOBTYP .EQ. 2) THEN
         BACKSPACE(LUPX)
         IF ( ISVCLK .EQ. 2 ) THEN
@@ -6436,13 +6801,18 @@ C Feb 23, 2019
 C       ID=0
         DO I=1,4
         IDD(I)=0
+c 2020Apr16 : day boundary AR NL jumps handling
+        DO J=1,NDAY-1
+        IPRNFX(I,J)=IPRNFX(I,J+1)
+        END DO
+c 2020Apr16 : day boundary AR NL jumps handling
         ENDDO
         IF(UPDEPO) THEN
          DO I=1,NSVO 
 C Feb 23, 2019 -start
-         JGNSS = (ISVO(I)-1)/32+1
-         IF((JGNSS.EQ.4.AND.ISVO(I).LE.100).OR.
-     &      (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
+          JGNSS = (ISVO(I)-1)/32+1
+          IF((JGNSS.EQ.4.AND.ISVO(I).LE.100).OR.
+     &       (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
           CNTAMB(ISVO(I))=1
           IF(IPC.GE.2)
      &     WRITE(*,*) "AR REF SEARCH: ",ISVO(I),PX(NFPAR+I,NFPAR+I),
@@ -6461,16 +6831,19 @@ C           ID=I
      &     FLTSUM(1,ISVO(I)),FLTSUM(14,ISVO(I)),FLTSUM(15,ISVO(I))
      &    ,CPAMB(ISVO(I))
            ELSE IF( FLTSUM(1,ISVO(I))*FLTINT/60.D0.GT.MINFX.AND.
-     &              ABS(CPAMB(ISVO(I))).LT.ABS(CPAMB(ISVO(ID)))) THEN
+c 2020Mar23 : Lahaye : Add this in Feb 23, 2019 change
+     &      ABS(CPAMB(ISVO(I))).LT.ABS(CPAMB(ISVO(IDD(JGNSS))))) THEN
+c    &              ABS(CPAMB(ISVO(I))).LT.ABS(CPAMB(ISVO(ID)))) THEN
+c 2020Mar23 : Lahaye : Add this in Feb 23, 2019 change
 C Feb 23, 2019
 C            ID=I
              IDD(JGNSS)=I
-            IF(IPC.GE.1)
+             IF(IPC.GE.1)
      &     WRITE(*,*) "AR REF SELECT: ",ISVO(I),PX(NFPAR+I,NFPAR+I),
      &     FLTSUM(1,ISVO(I)),FLTSUM(14,ISVO(I)),FLTSUM(15,ISVO(I))
      &    ,CPAMB(ISVO(I))
-            ENDIF
            ENDIF
+          ENDIF
          END DO
 C Feb 23, 2019
 C        IF(ID.NE.0) ID=ISVO(ID)
@@ -6480,9 +6853,9 @@ C        IF(ID.NE.0) ID=ISVO(ID)
         ELSE
          DO K=1,NSVOL 
 C Feb 23, 2019 -start
-         JGNSS = (ISVO(K)-1)/32+1
-         IF((JGNSS.EQ.4.AND.ISVO(K).LE.100).OR.
-     &      (JGNSS.EQ.5.AND.ISVO(K).LE.136)) JGNSS= JGNSS-1
+           JGNSS = (ISVO(K)-1)/32+1
+           IF((JGNSS.EQ.4.AND.ISVO(K).LE.100).OR.
+     &        (JGNSS.EQ.5.AND.ISVO(K).LE.136)) JGNSS= JGNSS-1
            CNTAMB(ISVOL(K))=1
            IF(IPC.GE.2)
      &      WRITE(*,*) "AR REF SEARCH: ",ISVOL(K),PX(NFPAR+K,NFPAR+K),
@@ -6499,7 +6872,10 @@ C            ID=K
      &     FLTSUM(1,ISVOL(K)),FLTSUM(14,ISVOL(K)),FLTSUM(15,ISVOL(K))
      &     ,CPAMB(ISVOL(K))
             ELSE IF( FLTSUM(1,ISVOL(K))*FLTINT/60.D0.GT.MINFX.AND.
-     &               ABS(CPAMB(ISVOL(K))).LT.ABS(CPAMB(ISVOL(ID)))) THEN
+c 2020Mar23 : Lahaye : Add this in Feb 23, 2019 change
+     &       ABS(CPAMB(ISVOL(K))).LT.ABS(CPAMB(ISVOL(IDD(JGNSS))))) THEN
+c    &               ABS(CPAMB(ISVOL(K))).LT.ABS(CPAMB(ISVOL(ID)))) THEN
+c 2020Mar23 : Lahaye : Add this in Feb 23, 2019 change
 C Feb 23, 2019
 C            ID=K
              IDD(JGNSS)=K
@@ -6523,10 +6899,20 @@ C       IF( ID .NE. 0 ) THEN
 C Feb 23, 2019
 C        IPRNREF=ID
          IPRNREF(K    )=IDD(K)
+c 2020Apr16 : day boundary AR NL jumps handling
+         IPRNFX(K,NDAY)=IDD(K)
+c 2020Apr16 : day boundary AR NL jumps handling
 C        IF(IPC.EQ.1) write(*,*)' SELECTING REF SAT FOR BWD: ', IPRNREF
-         IF(IPC.EQ.1) write(*,*)' SELECTING REF SAT FOR BWD: ', ID     
+c 2020Apr16 : day boundary AR NL jumps handling
+c        IF(IPC.EQ.1) write(*,*)' SELECTING REF SAT FOR BWD: ', ID     
+         IF(IPC.EQ.1) write(*,*)' SELECTING REF SAT FOR BWD: ', IDD(K) 
+c 2020Apr16 : day boundary AR NL jumps handling
         ENDIF
         ENDDO
+c 2020Apr16 : day boundary AR NL jumps handling
+        IF(IPC.GE.1)
+     & write(*,*) 'PRNFIX',NDAY,DIR((1-IDIR)/2+1),(IPRNFX(J,NDAY),J=1,4)
+c 2020Apr16 : day boundary AR NL jumps handling
 c!    write(*,*) 'going to 89'
         GO TO 89
       ELSE
@@ -6571,8 +6957,12 @@ C
      &              CNTSLIP,
      &              OUTLIERACTION,
      &              IOBTYP,
-     &              RCAVG, RCRMS, CPAVG, CPRMS, NFIX, 
-     &              NRCFX, NEPFIX,
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &              RCAVG, RCRMS, CPAVG, CPRMS, NFIX, 
+c    &              NRCFX, NEPFIX,
+     &              RCAVG, RCRMS, CPAVG, CPRMS, NFIX,NCFIX, 
+     &              NRCFX, NEPFIX, NCEPFIX,
+c 2020Apr16 : day boundary AR NL jumps handling
      &              CNTFIX, CNTAMB,
      &              NEPOCHDEL,
      &              NSVARC, RESARC, IMODE, IFREQ, NECLIPS, IPEPACC,
@@ -6616,10 +7006,16 @@ C
           DCDRIFT=DCDRIFT+(REFTM-REFTM0)*DCDRIFTRATE
         ENDIF
       IF(.NOT.IAROFF) THEN
-      OFFSET= OFFSET- RAVGALL(1)/.299792D9
-      DOFFSET = DOFFSET + RAVGALL(1)/.299792D9
-      DEOFFSET= DEOFFSET+ RAVGALL(1)/.299792D9
-      DCOFFSET= DCOFFSET+ RAVGALL(1)/.299792D9
+c 2020Apr16 : day boundary AR NL jumps handling
+c     OFFSET= OFFSET- RAVGALL(1)/.299792D9
+c     DOFFSET = DOFFSET + RAVGALL(1)/.299792D9
+c     DEOFFSET= DEOFFSET+ RAVGALL(1)/.299792D9
+c     DCOFFSET= DCOFFSET+ RAVGALL(1)/.299792D9
+      OFFSET= OFFSET- RAVGALL(1)/.299792458D9
+      DOFFSET = DOFFSET + RAVGALL(2)/.299792458D9
+      DEOFFSET= DEOFFSET+ RAVGALL(3)/.299792458D9
+      DCOFFSET= DCOFFSET+ RAVGALL(4)/.299792458D9
+c 2020Apr16 : day boundary AR NL jumps handling
       ENDIF
         CALL SUMCLK ( LPR,  LUSES, STNA, IYEARS, IMTHS, IDAYS, ICLKFIT,
      &              REFM, NCLKFIT,OFFSET*1.d9,DRIFT*1.d9,
@@ -6645,8 +7041,13 @@ C
      &              DCSDRIFT*1.d9,DCSDRIFTRATE*1.d9,DCCLKRMS,
      &              NMSOFF, NMSJMP, IMODE, LNG,
      &              ICLKAP,CLKY0,CLKD0,UCLKY0,UCLKD0,CLKSD0,SDCLK0,
-     &              NMSCPJ, NMSCLJ, ICORRTT, ICORRPR, ICORRCP, IDIR,
-     &              NDATJMP, DATJMP, RIFRATE ,SRIFRT, RAVGALL, SMTHCLK)
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &              NMSCPJ, NMSCLJ, ICORRTT, ICORRPR, ICORRCP, IDIR,
+c    &              NDATJMP, DATJMP, RIFRATE ,SRIFRT, RAVGALL, SMTHCLK)
+     &              NCFIX,NCEPFIX,NMSCPJ, NMSCLJ, ICORRTT, ICORRPR,
+     &              ICORRCP, IDIR, NDATJMP, DATJMP, RIFRATE ,SRIFRT,
+     &              RAVGALL, SMTHCLK)
+c 2020Apr16 : day boundary AR NL jumps handling
 C     
         CALL SUMRES ( LPR, IOBTYP, NSVARC, RESARC,
      &                OUTLIERACTION,
@@ -6755,6 +7156,21 @@ C 900 FORMAT( /,1X,I4,2('/',I2), 1X,2(I2,':'), F6.3 ,1X,'PRNS # ',36I6)
      &       "I2.2,'.',I3.3,3X,'PRN',I3.3,1X,2(2X,F7.1),3X,",
      &       A1,"10.4,3X,",A1,"10.4,",
      &       "3(3X,F10.4),3X,F15.3,3X,I2,1X,F8.3,3(1X,F9.3),F5.0)")
+c 2020Apr16 : new clock specific output
+ 2700 FORMAT('DIR',1X,'STN',1X,'DOY',1X,'YEAR-MM-DD',1X,
+     &       'HR:MN:SS.SSS',1X,'NSV',1X,'NRESET',1X,'NAMBFIX',
+     &       1X,'NSVGPS',1X,'GPSRST',1X,'GPSFIX',
+     &       1X,'GPSCLK(ns)',1X,'SGPSCLK(ns)',
+     &       1X,'NSVGLN',1X,'GLNRST',1X,'GLNFIX',
+     &       1X,'GLNCLK(ns)',1X,'SGLNCLK(ns)',
+     &       1X,'NSVGAL',1X,'GALRST',1X,'GALFIX',
+     &       1X,'GALCLK(ns)',1X,'SGALCLK(ns)',
+     &       1X,'NSVBEI',1X,'BEIRST',1X,'BEIFIX',
+     &       1X,'BEICLK(ns)',1X,'SBEICLK(ns)')
+ 2710 FORMAT(A3,1X,A4,1X,F11.7,1X,I4,'-',I2.2,'-',I2.2,
+     &       1X,I2.2,':',I2.2,':',I2.2,'.',I3.3,1X,I3,1X,I3,1X,I3,
+     &       4(1X,I3,1X,I3,1X,I3,1X,F16.4,1X,F8.3))
+c 2020Apr16 : new clock specific output
       END
 C2345678901234567890123456789012345678901234567890123456789012345678901234567890
 C
@@ -12814,7 +13230,7 @@ C
   660 CONTINUE
 C
 C-----------------------------------------------------------------------
-C     DAILY SESSION FILE NAME IS INPUT FILE NAME
+C     DAILY CONTINUATION FILE NAME IS INPUT FILE NAME
 C-----------------------------------------------------------------------
 C
   700 CONTINUE
@@ -12828,12 +13244,31 @@ C
       IERR = 1
       GO TO 1000
   760 CONTINUE
+c 2020Apr16 : new clock specific output
+C
+C-----------------------------------------------------------------------
+C     DAILY CLOCK FILE NAME IS INPUT FILE NAME
+C-----------------------------------------------------------------------
+C
+ 800  CONTINUE
+      CALL CHSFX ( INAM, KNAM, '.clk' )
+      OPEN ( LUCLK, FILE=KNAM, STATUS='UNKNOWN', IOSTAT=IOS, ERR=850 )
+      CLOSE ( LUCLK, STATUS='DELETE' )
+      OPEN ( LUCLK, FILE=KNAM, STATUS='NEW', IOSTAT=IOS, ERR=850 )
+      GO TO 860
+  850 WRITE(LUO,10100) IOS, KNAM
+      IERR = 1
+      GO TO 1000
+  860 CONTINUE
+c 2020Apr16 : new clock specific output
 C
 C-----------------------------------------------------------------------
 C     GET SATELLITE CLOCK FILE NAME IF REQUIRED
 C-----------------------------------------------------------------------
 C
- 800  CONTINUE
+c 2020Apr16 : new clock specific output
+c800  CONTINUE
+c 2020Apr16 : new clock specific output
       IF (IDC .GE. 2)
      &                CALL DCNAME ( LU, LUO, LPR, LUCOR, IDC, 
      &                  NAMCLK, IYEARS, IMTHS, IDAYS, NBDAY, IERR, 
@@ -28846,7 +29281,10 @@ C
      &                    DCSDOFF, DCSDRIFT, DCSDRIFTRATE, DCCLKRMS,
      &                    NMSOFF, NMSJMP, IMODE, LNG,
      &                    ICLKAP,CLKY0,CLKD0,UCLKY0,UCLKD0,CLKSD0,
-     &                    SDCLK0,
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &                    SDCLK0,
+     &                    SDCLK0, NCFIX,NCEPFIX,
+c 2020Apr16 : day boundary AR NL jumps handling
      &                    NMSCPJ, NMSCLJ, ICORRTT, ICORRPR, ICORRCP, 
      &                    IDIR, NDATJMP, DATJMP, RIFRATE,SRIFRT,RAVGALL,
      &                    SMTHCLK )
@@ -28873,6 +29311,9 @@ C
       INTEGER*4 LPR,LSES,IYEAR,IMTH,IDAY,NCLK,NMSJMP,NMSOFF,IMODE,
      &          LNG
       INTEGER*4 NMSCPJ,NMSCLJ,ICORRTT,ICORRPR,ICORRCP,IDIR,NDATJMP
+c 2020Apr16 : day boundary AR NL jumps handling
+      INTEGER*4 NCEPFIX(*),NCFIX(*)
+c 2020Apr16 : day boundary AR NL jumps handling
       CHARACTER*80 DATJMP(*)
       INTEGER*4 ICLKFIT
       REAL*8 REFTM,OFFSET,DRIFT,DRIFTRATE
@@ -28924,7 +29365,10 @@ C
       CHARACTER*15   CLKBWDU(2)
       CHARACTER*5    CLK
       CHARACTER*2    UNIT
-      INTEGER*4 I,MJD,JULD,IGPSWK,IWKDAY,IHRS,IMINS
+c 2020Apr16 : day boundary AR NL jumps handling
+c     INTEGER*4 I,MJD,JULD,IGPSWK,IWKDAY,IHRS,IMINS
+      INTEGER*4 I,MJD,JULD,IGPSWK,IWKDAY,IHRS,IMINS,FIX
+c 2020Apr16 : day boundary AR NL jumps handling
       REAL*8    DAYSEC,ONSM,SECS,SCALE,DDRIFT
 C
       DATA (SECHDR(I),I=1,2)
@@ -29197,22 +29641,44 @@ C
 C     SESSION CLOCK RECORD
 C
 c!    write(*,*) 'RAVGALL' , RAVGALL
+c 2020Apr16 : day boundary AR NL jumps handling
+      FIX=0
+      IF(NCFIX(1).GT.0) FIX=100*NCEPFIX(1)/NCFIX(1)
+c 2020Apr16 : day boundary AR NL jumps handling
       IF( CLKRMS .GT. 0 )
      &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, OFFSET,
      &      SDOFF, DRIFT*DAYSEC,SDRIFT*DAYSEC, CLKRMS*ONSM, MJD
-     &     ,'GPS'
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &     ,'GPS'
+     &     ,'GPS',FIX
+      FIX=0
+      IF(NCFIX(2).GT.0) FIX=100*NCEPFIX(2)/NCFIX(2)
+c 2020Apr16 : day boundary AR NL jumps handling
       IF( RCLKRMS .GT. 0 )
      &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, ROFFSET,
      &      RSDOFF, RDRIFT*DAYSEC,RSDRIFT*DAYSEC, RCLKRMS*ONSM, MJD
-     &     ,'GLONASS', 'IFDCB', RIFRATE, SRIFRT, 'NS/CH'
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &     ,'GLONASS', 'IFDCB', RIFRATE, SRIFRT, 'NS/CH'
+     &     ,'GLONASS',FIX, 'IFDCB', RIFRATE, SRIFRT, 'NS/CH'
+      FIX=0
+      IF(NCFIX(3).GT.0) FIX=100*NCEPFIX(3)/NCFIX(3)
+c 2020Apr16 : day boundary AR NL jumps handling
       IF( ECLKRMS .GT. 0 )
      &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, EOFFSET,
      &      ESDOFF, EDRIFT*DAYSEC,ESDRIFT*DAYSEC, ECLKRMS*ONSM, MJD
-     &     ,'GALILEO'
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &     ,'GALILEO'
+     &     ,'GALILEO',FIX
+      FIX=0
+      IF(NCFIX(4).GT.0) FIX=100*NCEPFIX(4)/NCFIX(4)
+c 2020Apr16 : day boundary AR NL jumps handling
       IF( CCLKRMS .GT. 0 )
      &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, COFFSET,
      &      CSDOFF, CDRIFT*DAYSEC,CSDRIFT*DAYSEC, CCLKRMS*ONSM, MJD
-     &     ,'BEIDOU'
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &     ,'BEIDOU'
+     &     ,'BEIDOU',FIX
+c 2020Apr16 : day boundary AR NL jumps handling
       IF( DFCLKRMS .GT. 0 )
      &WRITE(LSES,1440) 'CLK',STNA, IYEAR, IMTH, IDAY, CLK, DFOFFSET,
      &      DFSDOFF, DFDRIFT*DAYSEC,DFSDRIFT*DAYSEC, DFCLKRMS*ONSM, MJD
@@ -29245,7 +29711,11 @@ C
  1400 FORMAT(/,5X,A60)
  1410 FORMAT(5X,A78)
  1440 FORMAT ( A3,1X,A4,1X,I4,'/',I2.2,'/',I2.2,1X,A5,1X,
-     &     2(1X,F12.2,1X,F6.2), 1X, F5.3,1X,I10,1X,A7,1X,A5,2F6.2,1X,A5)
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &     2(1X,F12.2,1X,F6.2), 1X, F5.3,1X,I10,1X,A7,1X,A5,2F6.2,1X,A5)
+     &     2(1X,F12.2,1X,F6.2), 1X, F5.3,1X,I10,1X,A7,1X,I3,'%',
+     &     1X,A5,2F6.2,1X,A5)
+c 2020Apr16 : day boundary AR NL jumps handling
       RETURN
       END
 C2345678901234567890123456789012345678901234567890123456789012345678901234567890
@@ -30507,8 +30977,12 @@ C
      &                    NCS,
      &                    IACTION,
      &                    IOBTYP,
-     &                    RAVG, RRMS, PAVG, PRMS, NFIX, 
-     &                    NOBFX, NEPFIX,
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &                    RAVG, RRMS, PAVG, PRMS, NFIX, 
+c    &                    NOBFX, NEPFIX,
+     &                    RAVG, RRMS, PAVG, PRMS, NFIX, NCFIX,
+     &                    NOBFX, NEPFIX, NCEPFIX,
+c 2020Apr16 : day boundary AR NL jumps handling
      &                    CNTFIX,CNTAMB,
      &                    NEPOCHDEL,
      &                    NSVARC, RESARC, IMODE, IFREQ, 
@@ -30542,12 +31016,18 @@ C
      &         ,IACTION
       INTEGER*4 NEPOCHDEL
       INTEGER*4 LPR, LSES,NFIX,NSVARC,IMODE,IFREQ,ILANG
+c 2020Apr16 : day boundary AR NL jumps handling
+      INTEGER*4 NCFIX(*)
+c 2020Apr16 : day boundary AR NL jumps handling
       INTEGER*4 NARC(MAXSAT)
       INTEGER*4 NECLIPS(MAXSAT)
       INTEGER*4 IPEPACC(MAXSAT)
       INTEGER*4 CNTFIX(MAXSAT),CNTAMB(MAXSAT)
       INTEGER*4 NOB(MAXSAT,MAXARC)
-     &         ,NOBFX(MAXSAT,MAXARC), NEPFIX
+c 2020Apr16 : day boundary AR NL jumps handling
+c    &         ,NOBFX(MAXSAT,MAXARC), NEPFIX
+     &         ,NOBFX(MAXSAT,MAXARC), NEPFIX, NCEPFIX(*)
+c 2020Apr16 : day boundary AR NL jumps handling
      &         ,FIX, FIX1, FIX2
       INTEGER*4 NRJ(MAXSAT,MAXARC,MAXREJ)
       INTEGER*4 NCS(MAXSAT,MAXARC,MAXREJ),NCSARC(MAXREJ),NCSIR(MAXREJ)
@@ -30610,8 +31090,12 @@ C
      &                        "Nombre d'observations deponderees :"/
       DATA (NEPHDR(I),I=1,2) /"Number of epochs processed (%fix) :",
      &                        "Nombre d'epoques traitees (%fixe) :"/
-      DATA (NAMHDR(I),I=1,2) /"Ambiguity fixed   (%obs  %ambs)   :",
-     &                        "Ambiguites fixees (%obs  %ambs)   :"/
+c 2020Apr16 : day boundary AR NL jumps handling
+c     DATA (NAMHDR(I),I=1,2) /"Ambiguity fixed   (%obs  %ambs)   :",
+c    &                        "Ambiguites fixees (%obs  %ambs)   :"/
+      DATA (NAMHDR(I),I=1,2) /"Ambiguity fixed (%ep %obs  %ambs) :",
+     &                        "Ambiguites fixees (%ep %obs %ambs):"/
+c 2020Apr16 : day boundary AR NL jumps handling
       DATA (NERHDR(I),I=1,2) /"Number of epochs rejected         :",
      &                        "Nombre d'epoques rejetees         :"/
       DATA (PRRHDR(I),I=1,2) /"Pseudorange residuals        (m)  :",
@@ -30818,16 +31302,28 @@ C
             WRITE(LPR,1151) PRRHDR(ILANG),RRMSALL(ICONST),CONST(ICONST)
             WRITE(LPR,1151) CPRHDR(ILANG),PRMSALL(ICONST)*1.D2,
      &                    CONST(ICONST)
+c 2020Apr16 : day boundary AR NL jumps handling
+            FIX=0
+            IF( NCFIX(ICONST) .GT. 0 )
+     &       FIX=100*NCEPFIX(ICONST)/NCFIX(ICONST)
+c 2020Apr16 : day boundary AR NL jumps handling
             FIX1=(100*NOFXALL(ICONST))/NOBALL(ICONST)
             FIX2=0
             IF( NARALL(ICONST) .GT. 0 )
      &       FIX2=(100*NAFXALL(ICONST))/NARALL(ICONST)
-            WRITE(LPR,1152) NAMHDR(ILANG),FIX1,FIX2,
+c 2020Apr16 : day boundary AR NL jumps handling
+c           WRITE(LPR,1152) NAMHDR(ILANG),FIX1,FIX2,
+            WRITE(LPR,1152) NAMHDR(ILANG),FIX,FIX1,FIX2,
+c 2020Apr16 : day boundary AR NL jumps handling
      &                      CONST(ICONST)
           ENDIF
         ENDIF
       END DO
 C
+c 2020Apr16 : day boundary AR NL jumps handling
+      FIX=0
+      IF( NFIX .GT. 0 ) FIX=100*NEPFIX/NFIX
+c 2020Apr16 : day boundary AR NL jumps handling
       FIX1=0
 C Feb 23, 2019
 C     IF( NARALL(1)+NARALL(2) .GT. 0 )
@@ -30884,7 +31380,10 @@ C
  1100 FORMAT(5X,A35,3X,I4,2('/',I2.2),' ',2(I2.2,':'),I2.2,'.',I2.2)
  1150 FORMAT(5X,A35,2X,F6.2)
  1151 FORMAT(5X,A35,2X,F7.2,2X,A7)
- 1152 FORMAT(5X,A35,1X,I3'%',1X,I3,'%',1X,A7)
+c 2020Apr16 : day boundary AR NL jumps handling
+c1152 FORMAT(5X,A35,1X,I3'%',1X,I3,'%',1X,A7)
+ 1152 FORMAT(5X,A35,1X,I3,'%',1X,I3,'%',1X,I3,'%',1X,A7)
+c 2020Apr16 : day boundary AR NL jumps handling
  1160 FORMAT(5X,A35,2X,I7)
  1161 FORMAT(5X,A35,2X,I7,2X,A7)
  1162 FORMAT(5X,A35,2X,I7,2X,I3,'%')
