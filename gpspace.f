@@ -570,9 +570,6 @@ C BETAINI- INI BETA ANGLE OF ECLPS START(BEI EXCLUDED)
       REAL*8 BETAINI(136)
       DATA   BETAINI/136*0.D0/
       LOGICAL*4 TESTMISC
-C ===================
-      INTEGER*4 JPC
-C ===================
 C
       DATA YAWMODEL/0/
 C RTCM SPECIFIC INITIALIZATION
@@ -1177,9 +1174,6 @@ C    &     IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
      &     IERP, NAMERP, FMJDMP, XMPDIF, YMPDIF, XMPDRT, YMPDRT,
      &     IPXR, NAMIPX, ICLKAP,NAMSTC,CLKY0,CLKD0,UCLKY0,
      &     UCLKD0,CLKSD0, ICLKFIT, EPOCH, LNG, IGF )
-C ===================
-      JPC=IPC
-C ===================
 C SAVE INPUT DMAXNL&DMAXWL IN DMXNLSAV & DMXWLSAV for CY SLIP SWITCH
       IF (IPXR .EQ. 0) THEN
            LFIXNL=FLTPAR(1) .LT. 0.D0
@@ -1679,14 +1673,6 @@ c!     write(*,*) (i,isvo(i), pr1(i)*c,cr1(i)*c,DP1C1(ISVO(I)),i=1,nsvo)
 C
 C     FORM UNAMBIGUOUS TIME TAG
 C
-C ===================
-      IF(MOD(INT(UTTAG),86400).LE.60.OR.
-     &   MOD(INT(UTTAG),86400).GE.86340) THEN
-       IPC=3
-      ELSE
-       IPC=JPC
-      ENDIF
-C ===================
       CALL TOWHMS( IWKDAY, TTAG(1), IHR, IMIN, SEC, 0 )
       CALL GPSDC ( JULD,IYEAR,IMTH,IDAY,IGPSWK,IWKDAY, 4 )
       UTTAG=IGPSWK*604800.D0+TTAG(1)
@@ -31062,6 +31048,9 @@ C
       INTEGER*4 ICONST,NRJALL(4),NOBALL(4),NDWALL(4), NCONST
       INTEGER*4 NOFXALL(4),NAFXALL(4),NARALL(4),
      &  NOBARCFX, NARCFX
+c 2020Apr16 : day boundary AR NL jumps handling
+     & ,NSVALL(4)
+c 2020Apr16 : day boundary AR NL jumps handling
       INTEGER*4 IBLK(*)
       REAL*8    RAVGALL(4),RRMSALL(4),PAVGALL(4),PRMSALL(4)
       REAL*8    SSTIME,SETIME
@@ -31090,12 +31079,8 @@ C
      &                        "Nombre d'observations deponderees :"/
       DATA (NEPHDR(I),I=1,2) /"Number of epochs processed (%fix) :",
      &                        "Nombre d'epoques traitees (%fixe) :"/
-c 2020Apr16 : day boundary AR NL jumps handling
-c     DATA (NAMHDR(I),I=1,2) /"Ambiguity fixed   (%obs  %ambs)   :",
-c    &                        "Ambiguites fixees (%obs  %ambs)   :"/
-      DATA (NAMHDR(I),I=1,2) /"Ambiguity fixed (%ep %obs  %ambs) :",
-     &                        "Ambiguites fixees (%ep %obs %ambs):"/
-c 2020Apr16 : day boundary AR NL jumps handling
+      DATA (NAMHDR(I),I=1,2) /"Ambiguity fixed   (%obs  %ambs)   :",
+     &                        "Ambiguites fixees (%obs  %ambs)   :"/
       DATA (NERHDR(I),I=1,2) /"Number of epochs rejected         :",
      &                        "Nombre d'epoques rejetees         :"/
       DATA (PRRHDR(I),I=1,2) /"Pseudorange residuals        (m)  :",
@@ -31126,6 +31111,9 @@ C
        RRMSALL(ICONST) = 0.D0 
        PAVGALL(ICONST) = 0.D0 
        PRMSALL(ICONST) = 0.D0 
+c 2020Apr16 : day boundary AR NL jumps handling
+       NSVALL(ICONST)=0
+c 2020Apr16 : day boundary AR NL jumps handling
       END DO
       SSTIME=604800.D4
       SETIME=0.D0
@@ -31135,7 +31123,15 @@ C  NO. OF UNKNOWNS
       NOUNKNS=4
       IF(IMODE.EQ.2) NOUNKNS=NOUNKNS + 4*(NFIX-1)
       DO I=1,MAXSAT
+c 2020Apr16 : day boundary AR NL jumps handling
+       ICONST = (I-1)/32+1
+       IF((ICONST.EQ.4.AND.I.LE.100).OR.
+     &    (ICONST.EQ.5.AND.I.LE.136)) ICONST= ICONST-1
+c 2020Apr16 : day boundary AR NL jumps handling
        IF ( NARC(I) .NE. 0 ) THEN
+c 2020Apr16 : day boundary AR NL jumps handling
+        NSVALL(ICONST)=NSVALL(ICONST)+1
+c 2020Apr16 : day boundary AR NL jumps handling
         NSVARC=NSVARC+1   
         NOBARC=0
         NOBARCFX = 0
@@ -31225,10 +31221,12 @@ C end BEIDOU
      &      WRITE(RESARC(2,NSVARC),1501) 0, 
      &         0, (NCSARC(IR),IR=1,4)
         END IF
-        ICONST=1
-        IF( I .GT. 32 .AND. I .LE. 64 ) ICONST=2
-        IF( I .GT. 64 .AND. I .LE. 100) ICONST=3
-        IF( I .GT.100 .AND. I .LE. 136) ICONST=4
+c 2020Apr16 : day boundary AR NL jumps handling
+c       ICONST=1
+c       IF( I .GT. 32 .AND. I .LE. 64 ) ICONST=2
+c       IF( I .GT. 64 .AND. I .LE. 100) ICONST=3
+c       IF( I .GT.100 .AND. I .LE. 136) ICONST=4
+c 2020Apr16 : day boundary AR NL jumps handling
         RAVGALL(ICONST) = RAVGALL(ICONST) + RAVGARC 
         RRMSALL(ICONST) = RRMSALL(ICONST) + RRMSARC 
         PAVGALL(ICONST) = PAVGALL(ICONST) + PAVGARC 
@@ -31285,9 +31283,14 @@ C
       WRITE(LPR,1150) ESTHDR(ILANG),UPDINT
       FIX=0
       IF( NFIX .GT. 0 ) FIX=100*NEPFIX/NFIX
+c 2020Apr16 : day boundary AR NL jumps handling
+      WRITE(LPR,1160) NSVHDR(ILANG),NSVARC
+c 2020Apr16 : day boundary AR NL jumps handling
       WRITE(LPR,1162) NEPHDR(ILANG),NFIX,FIX
       WRITE(LPR,1160) NERHDR(ILANG),NEPOCHDEL
-      WRITE(LPR,1160) NSVHDR(ILANG),NSVARC
+c 2020Apr16 : day boundary AR NL jumps handling
+c     WRITE(LPR,1160) NSVHDR(ILANG),NSVARC
+c 2020Apr16 : day boundary AR NL jumps handling
       DO ICONST=1,NCONST
         IF( NOBALL(ICONST) .GT. 0 .OR. NRJALL(ICONST) .GT. 0 .OR.
      &      NDWALL(ICONST) .GT. 0 ) THEN
@@ -31295,6 +31298,13 @@ C
             NRJALL(ICONST)=NRJALL(ICONST)+NDWALL(ICONST)
             NDWALL(ICONST)=0
           ENDIF
+c 2020Apr16 : day boundary AR NL jumps handling
+          WRITE(LPR,1161) NSVHDR(ILANG),NSVALL(ICONST),CONST(ICONST)
+          FIX=0
+          IF( NCFIX(ICONST) .GT. 0 )
+     &     FIX=100*NCEPFIX(ICONST)/NCFIX(ICONST)
+          WRITE(LPR,1163) NEPHDR(ILANG),NCFIX(ICONST),FIX,CONST(ICONST)
+c 2020Apr16 : day boundary AR NL jumps handling
           WRITE(LPR,1161) NOBHDR(ILANG),NOBALL(ICONST),CONST(ICONST)
           WRITE(LPR,1161) NRJHDR(ILANG),NRJALL(ICONST),CONST(ICONST)
           WRITE(LPR,1161) NDWHDR(ILANG),NDWALL(ICONST),CONST(ICONST)
@@ -31302,19 +31312,11 @@ C
             WRITE(LPR,1151) PRRHDR(ILANG),RRMSALL(ICONST),CONST(ICONST)
             WRITE(LPR,1151) CPRHDR(ILANG),PRMSALL(ICONST)*1.D2,
      &                    CONST(ICONST)
-c 2020Apr16 : day boundary AR NL jumps handling
-            FIX=0
-            IF( NCFIX(ICONST) .GT. 0 )
-     &       FIX=100*NCEPFIX(ICONST)/NCFIX(ICONST)
-c 2020Apr16 : day boundary AR NL jumps handling
             FIX1=(100*NOFXALL(ICONST))/NOBALL(ICONST)
             FIX2=0
             IF( NARALL(ICONST) .GT. 0 )
      &       FIX2=(100*NAFXALL(ICONST))/NARALL(ICONST)
-c 2020Apr16 : day boundary AR NL jumps handling
-c           WRITE(LPR,1152) NAMHDR(ILANG),FIX1,FIX2,
-            WRITE(LPR,1152) NAMHDR(ILANG),FIX,FIX1,FIX2,
-c 2020Apr16 : day boundary AR NL jumps handling
+            WRITE(LPR,1152) NAMHDR(ILANG),FIX1,FIX2,
      &                      CONST(ICONST)
           ENDIF
         ENDIF
@@ -31379,14 +31381,21 @@ C
  1050 FORMAT(5X,A35,3X,A40)
  1100 FORMAT(5X,A35,3X,I4,2('/',I2.2),' ',2(I2.2,':'),I2.2,'.',I2.2)
  1150 FORMAT(5X,A35,2X,F6.2)
- 1151 FORMAT(5X,A35,2X,F7.2,2X,A7)
 c 2020Apr16 : day boundary AR NL jumps handling
+c1151 FORMAT(5X,A35,2X,F7.2,2X,A7)
 c1152 FORMAT(5X,A35,1X,I3'%',1X,I3,'%',1X,A7)
- 1152 FORMAT(5X,A35,1X,I3,'%',1X,I3,'%',1X,I3,'%',1X,A7)
+ 1151 FORMAT(5X,A35,2X,F7.2,7X,A7)
+ 1152 FORMAT(5X,A35,1X,I3'%',1X,I3,'%',6X,A7)
 c 2020Apr16 : day boundary AR NL jumps handling
  1160 FORMAT(5X,A35,2X,I7)
- 1161 FORMAT(5X,A35,2X,I7,2X,A7)
+c 2020Apr16 : day boundary AR NL jumps handling
+c1161 FORMAT(5X,A35,2X,I7,2X,A7)
+ 1161 FORMAT(5X,A35,2X,I7,7X,A7)
+c 2020Apr16 : day boundary AR NL jumps handling
  1162 FORMAT(5X,A35,2X,I7,2X,I3,'%')
+c 2020Apr16 : day boundary AR NL jumps handling
+ 1163 FORMAT(5X,A35,2X,I7,2X,I3,'%',1X,A7)
+c 2020Apr16 : day boundary AR NL jumps handling
  1405 FORMAT ( A3,1X,A4,2(1X,I4,'/',I2.2,'/',I2.2,
 C Mar 30, 2020
 C    &       1X,2(I2.2,':'),I2.2,F2.1), 1X,I2,4(1X,I6), 2f5.1,f5.0,f6.0,
