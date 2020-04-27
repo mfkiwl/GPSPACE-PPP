@@ -5312,7 +5312,8 @@ C Feb 23, 219
      &      (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
 c 2020Apr16 : day boundary AR NL jumps handling
 c           IF(PX(NFPAR+I,NFPAR+I).GE..9 D 6)  NAMBFX= NAMBFX+1
-            IF(PX(NFPAR+I,NFPAR+I).GE..9 D 6) THEN
+            IF(PRDC(9,ISVO(I)).NE.0.D0.AND.
+     &         PX(NFPAR+I,NFPAR+I).GE..9 D 6) THEN
              NCAMBFX(JGNSS)= NCAMBFX(JGNSS)+1
              NAMBFX= NAMBFX+1
             ENDIF
