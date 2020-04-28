@@ -6154,9 +6154,9 @@ c         IF( IAMB(ISVO(I)) .NE. 0 )
 c    &     IAMBSUM=IAMBSUM+1
 c        END DO
          DO I=1,NSVO
-          JGNSS = (ISVO(IO)-1)/32+1
-          IF((JGNSS.EQ.4.AND.ISVO(IO).LE.100).OR.
-     &       (JGNSS.EQ.5.AND.ISVO(IO).LE.136)) JGNSS= JGNSS-1
+          JGNSS = (ISVO(I)-1)/32+1
+          IF((JGNSS.EQ.4.AND.ISVO(I).LE.100).OR.
+     &       (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
           IF( IAMB(ISVO(I)) .NE. 0 ) THEN
            IAMBSUM=IAMBSUM+1
            IAMBSUMS(JGNSS)=IAMBSUMS(JGNSS)+1
