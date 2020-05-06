@@ -425,6 +425,9 @@ C
      &          C,F1,F2,F1S,F2S,F12S,F1ION,F2ION,AL1,AL2,AL3,CLKOFF,
      &          CLKOFF2,
      &          PCHIP,CACHIP,PI,HION,OBSINT,UPDINT,DLAY12,EPOCH,GPSUTC,
+c 2020May04 : handling input coordinates epoch outside RDCMD routine
+     &          POSEPO,
+c 2020May04 : handling input coordinates epoch outside RDCMD routine
      &          FLTINT,
      &          SDPR,ANTH(4),CUTOFF,DOPMAX,SDCP,SDTROP,TEMP,PRES,RH,
      &          TROSCL,REFHGT,VSCALE,DRYEPO,WETEPO,DRYM,WETM,TROZEN,
@@ -739,6 +742,9 @@ c     DATA NCLKNL/0.D0/
 c 2020Apr16 : day boundary AR NL jumps handling
       DATA SMTHCLK/.TRUE./
 c 2020Apr16 : day boundary AR NL jumps handling
+c 2020May04 : handling input coordinates management outside RDCMD routine
+      DATA IXRVRNX/-1/
+c 2020May04 : handling input coordinates management outside RDCMD routine
       DO J=1,4
        DO I=1,MAXDAYS
         IPRNFX(J,I)=0
@@ -890,6 +896,28 @@ C
 C
       CALL RDFMT (LUMEA, IFMTM, IEND)
       IF (IEND .EQ. 1) GO TO 690
+C Apr 25, 2020 - start
+C      READ COMMAND FILE
+C      
+      IDC=1
+      CALL RDCMD( LUI, LUO, LUCMD, NAMCMD, NFREQ, IFMTM, IFMTE,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+c 2020May04 : handling input coordinates management outside RDCMD routine
+c    &            MISCFACTR, MISCFACTP, EPOCH,
+     &            MISCFACTR, MISCFACTP, POSEPO,
+c 2020May04 : handling input coordinates management outside RDCMD routine
+c    &            MISCFACTR, MISCFACTP,
+c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
+c 2020May04 : handling input coordinates management outside RDCMD routine
+c    &            SDPR, XRVMRK, XRVVEL, IXRVRNX,ANTH(1),ICLKSOL,CUTOFF,
+c    &            IDC, ICMDERR, NUCMD, IUCMD, DOPMAX, HDXYZH, DTM,
+     &            SDPR, XRVMRK, XRVVEL,         ANTH(1),ICLKSOL,CUTOFF,
+     &            IDC, ICMDERR, NUCMD, IUCMD, DOPMAX,         DTM,
+c 2020May04 : handling input coordinates management outside RDCMD routine
+     &            PI, SDCP, SDTROP, CMDLST, ICMD, SMTHCLK, LNG )
+         SRIFRT=0.D0
+      IFREQ   = ICMD(4)
+C Apr 25, 2020 -end
 C
       CALL RDHDR ( IFMTM, LUMEA, IYEARS, IMTHS, IDAYS, STNA,
      &             OBSINT, NOBREC, IOBPOS, DLAY12, NFREQ, IFREQ, HDXYZH,
@@ -916,16 +944,18 @@ c!   &            HDXYZH(1),HDXYZH(2),HDXYZH(3),HDXYZH(4)
 C
 C      READ COMMAND FILE
 C      
-      IDC=1
-      CALL RDCMD( LUI, LUO, LUCMD, NAMCMD, NFREQ, IFMTM, IFMTE,  
+C Apr 25, 2020 -start
+C     IDC=1
+C     CALL RDCMD( LUI, LUO, LUCMD, NAMCMD, NFREQ, IFMTM, IFMTE,  
 c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
-     &            MISCFACTR, MISCFACTP, EPOCH,
+C    &            MISCFACTR, MISCFACTP, EPOCH,
 c    &            MISCFACTR, MISCFACTP,
 c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
-     &            SDPR, XRVMRK, XRVVEL, IXRVRNX,ANTH(1),ICLKSOL,CUTOFF, 
-     &            IDC, ICMDERR, NUCMD, IUCMD, DOPMAX, HDXYZH, DTM, 
-     &            PI, SDCP, SDTROP, CMDLST, ICMD, SMTHCLK, LNG )
-         SRIFRT=0.D0
+C    &            SDPR, XRVMRK, XRVVEL, IXRVRNX,ANTH(1),ICLKSOL,CUTOFF, 
+C    &            IDC, ICMDERR, NUCMD, IUCMD, DOPMAX, HDXYZH, DTM, 
+C    &            PI, SDCP, SDTROP, CMDLST, ICMD, SMTHCLK, LNG )
+C        SRIFRT=0.D0
+C Apr 25, 2020 - end
          write(*,*) 'XYZ STA vel (m/y)', XRVVEL(1)*365.25*86400,
      & XRVVEL(2)*365.25*86400, XRVVEL(3)*365.25*86400 
        
@@ -949,7 +979,7 @@ C
       NBDAY   = ICMD(1)
       IMODE   = ICMD(2)
       IOBTYP  = ICMD(3)
-      IFREQ   = ICMD(4)
+C     IFREQ   = ICMD(4)
       ISVEPH  = ICMD(5)
       IAROFF = ICMD(6)/10 .NE. 0
       ISVCLK =  MOD(ICMD(6),10)
@@ -962,6 +992,31 @@ C
       NDIR    = ICMD(11)
       IREFOUT = ICMD(12)
       ICOROUT = ICMD(13)
+c 2020May04 : handling input coordinates management outside RDCMD routine
+C
+C MANAGING INITIAL POSITION/ANTENNA INPUT: RNX vs CMD
+C
+C CASE NO CMD POSITION INPUT
+      IF( XRVMRK(1)+XRVMRK(2)+XRVMRK(3) .EQ. 300.D0 ) THEN
+C TRY USING RNX VALUES IF THEY WERE READ IN
+       IF( HDXYZH(1)+HDXYZH(2)+HDXYZH(3) .NE. 0.D0 ) THEN
+        DO I=1,3
+         XRVMRK(I)=HDXYZH(I)
+        END DO
+        ANTH(1)=HDXYZH(4)
+        IXRVRNX=1
+       ENDIF
+C CASE CMD POSITION INPUT
+      ELSE
+        IXRVRNX=0
+C APPLY POSITION VELOCITY IF EPOCH WAS INPUT
+       IF( POSEPO .NE. 0.D0 ) THEN
+        DO I=1,3
+         XRVMRK(I)=XRVMRK(I)+(EPOCH-POSEPO)*XRVVEL(I)*86400.D0*365.25D0
+        END DO
+       ENDIF
+      ENDIF
+c 2020May04 : handling input coordinates management outside RDCMD routine
 c 2020Apr16 : day boundary AR NL jumps handling
 c     CALL FREQ12(1, F1, F2, F1S, F2S, F12S, F1ION, F2ION,
 c    &            AL1, AL2, AL3, AL4, IFREQ )
@@ -2107,7 +2162,13 @@ C start PR COOR (Wanninger & Beer 2014)
 C GEO (BLK 63 & BLK 67) Excluded below
      &   ) THEN
          PR1(I)= PR1(I) + BEIPR(1, EL(K), IBLK(ISVO(I)))/C
+C Apr 25, 2020 - start  
+       IF(IFREQ.EQ.6) THEN
+         PR2(I)= PR2(I) + BEIPR(3, EL(K), IBLK(ISVO(I)))/C
+        ELSE
          PR2(I)= PR2(I) + BEIPR(2, EL(K), IBLK(ISVO(I)))/C
+        ENDIF
+C Apr 25, 2020 - end    
          CR1(I)= CR1(I) + BEIPR(1, EL(K), IBLK(ISVO(I)))/C
        ENDIF
         IF (LCSLIP(I) .EQ. 1) THEN
@@ -2745,9 +2806,15 @@ C
         IF((COEFMF(5,2).GT.0.D0.and.COEFMF(5,2).LT.2.D-3).OR. 
      &     (COEFMF(5,2).LT.2.D4.and.COEFMF(5,2).GT.9.D3)) THEN
           OPEN ( LUMET, FILE=NAMMET, STATUS='UNKNOWN')
-          CALL RDMET( LUI, LUO, LUMET, IYEAR, IMTH, IDAY, 
+c 2020May04 : disallow stdin input through LUI rather than LNG
+c         CALL RDMET( LUI, LUO, LUMET, IYEAR, IMTH, IDAY, 
+          CALL RDMET(   0, LUO, LUMET, IYEAR, IMTH, IDAY, 
+c 2020May04 : disallow stdin input through LUI rather than LNG
      &     IMET,
-     &     TEMP, PRES, RH, TROSCL, PLHMRK   , COEFMF, STNA, 0)
+c 2020May04 : disallow stdin input through LUI rather than LNG
+     &     TEMP, PRES, RH, TROSCL, PLHMRK   , COEFMF, STNA, LNG)
+c    &     TEMP, PRES, RH, TROSCL, PLHMRK   , COEFMF, STNA, 0)
+c 2020May04 : disallow stdin input through LUI rather than LNG
           CLOSE(LUMET)
         END IF
 C
@@ -5312,8 +5379,11 @@ C Feb 23, 219
      &      (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
 c 2020Apr16 : day boundary AR NL jumps handling
 c           IF(PX(NFPAR+I,NFPAR+I).GE..9 D 6)  NAMBFX= NAMBFX+1
-            IF(PRDC(9,ISVO(I)).NE.0.D0.AND.
-     &         PX(NFPAR+I,NFPAR+I).GE..9 D 6) THEN
+C Apr 24, 2020
+c           IF(PX(NFPAR+I,NFPAR+I).GE..9 D 6) THEN
+            IF(PRDC(8,ISVO(I)).NE..0D0.OR.PRDC(9,ISVO(I)).NE..0D0
+     &        .AND.PX(NFPAR+I,NFPAR+I).GE..9D 6)
+     &         THEN
              NCAMBFX(JGNSS)= NCAMBFX(JGNSS)+1
              NAMBFX= NAMBFX+1
             ENDIF
@@ -5713,6 +5783,21 @@ C
             CALL INIXRV ( DTM, XRVEPO, PLHEPO, XRVAPR,
      &                    XRVMRK, PLHMRK, XRVAPC, XRVINI,
      &                    ANTX )
+c 2020May04 : handling input coordinates management outside RDCMD routine
+C
+C RECOMPUTE TEMP,PRES,RH BASED ON RECOMPUTED COORDINATES
+C
+            IF((COEFMF(5,2).GT.0.D0.and.COEFMF(5,2).LT.2.D-3).OR. 
+     &         (COEFMF(5,2).LT.2.D4.and.COEFMF(5,2).GT.9.D3).OR.
+     &         (IMET(1) .LT. 5 .AND. IMET(2) .LT. 5
+     &                         .AND. IMET(3) .LT. 5)) THEN
+             OPEN ( LUMET, FILE=NAMMET, STATUS='UNKNOWN')
+             CALL RDMET( 0, LUO, LUMET, IYEARS, IMTHS, IDAYS, 
+     &                   IMET, TEMP, PRES, RH, TROSCL, 
+     &                   PLHMRK   , COEFMF, STNA, LNG)
+             CLOSE(LUMET)
+            ENDIF
+c 2020May04 : handling input coordinates management outside RDCMD routine
           END IF
         END IF
 C
@@ -6037,7 +6122,10 @@ C Feb 23, 2019
           NRC(ISVO(IO),IARC(ISVO(IO)))=NRC(ISVO(IO),IARC(ISVO(IO)))+1
 c 2020Apr16 : day boundary AR NL jumps handling
 c         IF( PX(NFPAR+IO,NFPAR+IO).GT..9D6 )
-          IF( PX(NFPAR+IO,NFPAR+IO).GE..9D6 )
+C Apr 25, 2020
+c         IF( PX(NFPAR+IO,NFPAR+IO).GE..9D6 )
+          IF(PRDC(8,ISVO(IO)).NE..0D0.OR.PRDC(9,ISVO(IO)).NE..0D0
+     &      .AND.PX(NFPAR+IO,NFPAR+IO).GE..9D6)
 c 2020Apr16 : day boundary AR NL jumps handling
      &     NRCFX(ISVO(IO),IARC(ISVO(IO)))=
      &                               NRCFX(ISVO(IO),IARC(ISVO(IO)))+1
@@ -6154,9 +6242,14 @@ c         IF( IAMB(ISVO(I)) .NE. 0 )
 c    &     IAMBSUM=IAMBSUM+1
 c        END DO
          DO I=1,NSVO
+c 2020Apr26 : correct index
           JGNSS = (ISVO(I)-1)/32+1
           IF((JGNSS.EQ.4.AND.ISVO(I).LE.100).OR.
      &       (JGNSS.EQ.5.AND.ISVO(I).LE.136)) JGNSS= JGNSS-1
+c         JGNSS = (ISVO(IO)-1)/32+1
+c         IF((JGNSS.EQ.4.AND.ISVO(IO).LE.100).OR.
+c    &       (JGNSS.EQ.5.AND.ISVO(IO).LE.136)) JGNSS= JGNSS-1
+c 2020Apr26 : correct index
           IF( IAMB(ISVO(I)) .NE. 0 ) THEN
            IAMBSUM=IAMBSUM+1
            IAMBSUMS(JGNSS)=IAMBSUMS(JGNSS)+1
@@ -13330,7 +13423,9 @@ C
 C   GALILEO IF IPRN (64, 100> ! USE E5a (L5) INSTEAD OF L2
       IF(IPRN.GT.64.AND.IPRN.LE.100)THEN
 C   GAL Ea
-        IF(IFREQ.LE.5) F2= 1176.450D+06 
+C Apr 25, 2020
+C       IF(IFREQ.LE.5) F2= 1176.450D+06 
+        IF(IFREQ.LE.6) F2= 1176.450D+06 
 C GAL Eb
         IF(IFREQ.EQ.7) F2= 1207.140D+06 
 C GAL (Ea+Eb)/2
@@ -13342,6 +13437,8 @@ C   BEIDOU (IPRN(100,132> ! USE B1 & B2
       IF(IPRN.GT.100.AND.IPRN.LE.136) THEN
        F1   = 1561.098D+06
        F2   = 1207.140D+06
+C Apr 25, 2020 - IFREQ.EQ. 6 use BEI 3 Fqcy only B1/B3 (L2/L6)
+       IF(IFREQ.EQ.6) F2   = 1268.520D+06
       ENDIF
 C    OUTPUT LANE COMBINATIONS
       F1S  = F1*F1
@@ -14745,8 +14842,16 @@ C GAL F2 DEFAULT
        IF (OBTYP(IO).EQ.'L5') IOBPOS(7) = IO
        IF (OBTYP(IO).EQ.'C5') IOBPOS(8) = IO
 C BEI F2 DEFAULT
-       IF (OBTYP(IO).EQ.'L7') IOBPOS(9) = IO
-       IF (OBTYP(IO).EQ.'C7') IOBPOS(10) = IO
+C Apr 25, 2020 start  FOR IFREQ=6, use B1/B3 (L2/L6) BEI3 FQCY
+      IF(IFREQ.EQ.6) THEN
+       IF (OBTYP(IO).EQ.'L6') IOBPOS(9) = IO
+       IF (OBTYP(IO).EQ.'C6') IOBPOS(10) = IO
+      ENDIF
+C      IF (OBTYP(IO).EQ.'L7') IOBPOS(9) = IO
+C      IF (OBTYP(IO).EQ.'C7') IOBPOS(10) = IO
+       IF (IOBPOS(9 ).EQ.0.AND.OBTYP(IO).EQ.'L7') IOBPOS(9)  = IO
+       IF (IOBPOS(10).EQ.0.AND.OBTYP(IO).EQ.'C7') IOBPOS(10) = IO
+C Apr25, 2020 - end
       ENDIF
 C 
       IF(IFREQ.EQ.8) THEN
@@ -14944,7 +15049,9 @@ C  -----------------
 C
  1000 FORMAT ( A2,1X,I4,1X,4(I2,1X),F11.8,1X,I7,1X,2(A5,1X),A3,1X,A4 )
  1100 FORMAT ( A2,1X,I4,1X,F15.8,1X,F14.8,1X,I5,1X,F15.13 )
- 1200 FORMAT ( A2,2X,I2, 3X, 17(A1,I2))
+C Apr 25, 2020
+C1200 FORMAT ( A2,2X,I2, 3X, 17(A1,I2))
+ 1200 FORMAT ( A2,1X,I3, 3X, 17(A1,I2))
  1210 FORMAT ( 9X, 17(A1,I2))
  1300 FORMAT ( 9X, 17(1X,I2))
  1400 FORMAT ( A2,2(1X,A2), 2(1X,A3),4(1X,A4),4(1X,A5) )
@@ -18469,11 +18576,18 @@ C Droit d'auteur (c) Gouvernement du Canada, 2018. Sous termes de Licence MIT
 C
       SUBROUTINE RDCMD( LU, LUO, LUCMD, FNAM, NFREQ, IFMTM, IFMTE, 
 c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
-     &                  MISCFACTR, MISCFACTP, DATEPO,
+c 2020May04 : handling input coordinates management outside RDCMD routine
+c    &                  MISCFACTR, MISCFACTP, DATEPO,
+     &                  MISCFACTR, MISCFACTP, POSEPO,
+c 2020May04 : handling input coordinates management outside RDCMD routine
 c    &                  MISCFACTR, MISCFACTP,
 c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
-     &                  SDP, XRVMRK,XRVVEL,IXRVRNX,ANTH, ICLKSOL,CUTOFF, 
-     &                  IDC, IERR, NUCMD, IUCMD, DOPMAX, HDXYZH, DTM, 
+c 2020May04 : handling input coordinates management outside RDCMD routine
+c    &                  SDP, XRVMRK,XRVVEL,IXRVRNX,ANTH, ICLKSOL,CUTOFF, 
+c    &                  IDC, IERR, NUCMD, IUCMD, DOPMAX, HDXYZH, DTM, 
+     &                  SDP, XRVMRK,XRVVEL,        ANTH, ICLKSOL,CUTOFF, 
+     &                  IDC, IERR, NUCMD, IUCMD, DOPMAX,         DTM, 
+c 2020May04 : handling input coordinates management outside RDCMD routine
      &                  PI, SDCP, SDTROP, CMDLST, ICMD, SMTHCLK, LNG )
 C
 C     NAME              RDCMD
@@ -18521,23 +18635,34 @@ C
       INTEGER*4 ICLKSOL,IDC,NUCMD,IUCMD(*)
       INTEGER*4 LNG,IERR
       REAL*8    SDP,ANTH,CUTOFF,DOPMAX,PI,SDCP,SDTROP
-      REAL*8    HDXYZH(*),XRVMRK(*),DTM(*)
+c 2020May04 : handling input coordinates management outside RDCMD routine
+c     REAL*8    HDXYZH(*),XRVMRK(*),DTM(*)
+      REAL*8              XRVMRK(*),DTM(*)
+c 2020May04 : handling input coordinates management outside RDCMD routine
       REAL*8    XRVVEL(*),XRNV, XREV, XRHV
       REAL*8    MISCFACTR, MISCFACTP
 c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
-     &         , DATEPO
+c 2020May04 : handling input coordinates epoch outside RDCMD routine
+c    &         , DATEPO
+     &         , POSEPO
+c 2020May04 : handling input coordinates epoch outside RDCMD routine
 c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C
       INTEGER*4     IOPTER(MAXCMD),I,IOP,IOPT,NMOD,NOPTERR,IL,IXRV
      &             ,IR
       INTEGER*4     IOPTCF,IOS
-      INTEGER*4             ICART, IXRVRNX
+c 2020May04 : handling input coordinates management outside RDCMD routine
+c     INTEGER*4             ICART, IXRVRNX
+      INTEGER*4             ICART
+c 2020May04 : handling input coordinates management outside RDCMD routine
       REAL*8        OPT(MAXCMD),XRVVEC,XRVELV,UPOPT
       REAL*8        OPTMIN(MAXCMD)
       REAL*8        OPTMAX(MAXCMD)
       REAL*8    MISCR_FACT, MISCP_FACT
 c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
-     &         , POSEPO
+c 2020May04 : handling input coordinates epoch outside RDCMD routine
+c    &         , POSEPO
+c 2020May04 : handling input coordinates epoch outside RDCMD routine
 c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C
       CHARACTER*80      COMMENT
@@ -18736,8 +18861,10 @@ c    &  XRVVEL(I)
 c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 140   CONTINUE                        
 c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
-      IF( POSEPO .NE. 0.D0 )
-     &  OPT(IUCMD(I+15))=OPT(IUCMD(I+15))+( DATEPO-POSEPO)*XRVVEL(I)
+c 2020May04 : handling input coordinates epoch outside RDCMD routine
+c     IF( POSEPO .NE. 0.D0 )
+c    &  OPT(IUCMD(I+15))=OPT(IUCMD(I+15))+( DATEPO-POSEPO)*XRVVEL(I)
+c 2020May04 : handling input coordinates epoch outside RDCMD routine
 c Lahaye : 2020Feb06 : Adding an epoch for input coordinates
 C sta vel from m/year to m/sec
       XRVVEL(I)= XRVVEL(I)/86400.D0/365.25D0
@@ -18766,7 +18893,9 @@ C-----------------------------------------------------------------------
 C      COMPUTE VECTOR TO MARKER FROM COMMAND FILE COORDINATES
 C-----------------------------------------------------------------------
 C
-      IXRVRNX=-1
+c 2020May04 : handling input coordinates management outside RDCMD routine
+c     IXRVRNX=-1
+c 2020May04 : handling input coordinates management outside RDCMD routine
       IXRV = IUCMD(NUCMD-6)
       ICART=1
       XRVVEC=0.D0
@@ -18779,17 +18908,21 @@ C     ELSE REPLACE MARKER COORDINATES WITH RINEX FILE INPUT
 C
       IF (XRVVEC .GT. 1.D0) THEN
         XRVVEC=DSQRT(XRVVEC)
-      XRVELV=XRVVEC-DTM(1)
+        XRVELV=XRVVEC-DTM(1)
         IF ( DABS(XRVELV) .GT. 2.D5 ) ICART=0
-        IXRVRNX=0
+c 2020May04 : handling input coordinates management outside RDCMD routine
+c       IXRVRNX=0
+c 2020May04 : handling input coordinates management outside RDCMD routine
       ELSE
-        IXRVRNX=1
-        DO I=1,4
-         OPT(IXRV+I)=HDXYZH(I)
-        END DO
-        DO I=1,3
-          XRVVEC=XRVVEC+OPT(IXRV+I)*OPT(IXRV+I)
-        END DO
+c 2020May04 : handling input coordinates management outside RDCMD routine
+c       IXRVRNX=1
+c       DO I=1,4
+c        OPT(IXRV+I)=HDXYZH(I)
+c       END DO
+c       DO I=1,3
+c         XRVVEC=XRVVEC+OPT(IXRV+I)*OPT(IXRV+I)
+c       END DO
+c 2020May04 : handling input coordinates management outside RDCMD routine
 C
 C       IF RINEX FILE COORDINATES ARE ZERO, SET TO 100.D0
 C
@@ -18799,7 +18932,7 @@ C
           DO I=1,3
             OPT(IXRV+I)=100.D0
           END DO
-      END IF
+        END IF
       END IF
  200  CONTINUE
 C
@@ -20480,7 +20613,10 @@ C compute Rel hum
        END IF
 C
 C TRY THE GPT2 GRID
-       IF (STNAIN(1:1).EQ.'%') THEN
+c 2020May04 : only if valid height input
+c      IF (STNAIN(1:1).EQ.'%') THEN
+       IF (STNAIN(1:1).EQ.'%' .AND. PH(3) .GT. -30.D0 ) THEN
+c 2020May04 : only if valid PLH input
 C gpt2 grid found!!! call gpt2
         backspace(LUMET)
         POS(1,1) = PH(1)
@@ -20543,24 +20679,27 @@ C-----------------------------------------------------------------------
 C     MAKE DESIRED MODIFICATIONS
 C-----------------------------------------------------------------------
 C
-      IF( LNG .GT. 0 ) THEN
+c 2020May04 : disallow stdin input through LUI rather than LNG
+c     IF( LNG .GT. 0 ) THEN
+      IF( LU  .GT. 0 ) THEN
+c 2020May04 : disallow stdin input through LUI rather than LNG
        IF (LNG .EQ. 1) WRITE(LUO,20200)
        IF (LNG .EQ. 2) WRITE(LUO,20201)
        READ(LU,*) I, UPMET
        IF( I .GT. 0 .AND. I .LT. 5 ) THEN
-      IF( METSRC(5) .LT. 3 ) THEN
+        IF( METSRC(5) .LT. 3 ) THEN
          METSRC(I)=6
          IF (LNG .EQ. 1) SRCMET(I)=SRCMETE(METSRC(I))
          IF (LNG .EQ. 2) SRCMET(I)=SRCMETF(METSRC(I))
          DEFMET(I) = UPMET
         ELSE
-       WRITE(LUO,*)
+         WRITE(LUO,*)
      &      ' *** WARNING *** '
-       WRITE(LUO,*)
+         WRITE(LUO,*)
      &      ' *** WARNING *** Changes to item ',I,' not allowed. ***'
-       WRITE(LUO,*)
+         WRITE(LUO,*)
      &      ' *** WARNING *** '
-      END IF
+        END IF
         GO TO 260
        END IF
       END IF
@@ -21125,11 +21264,15 @@ C             IF( IL-IF .GT. 20 ) THEN
                   READ(RECORD,'(4x,I2)') I               
 C USE E5/L5 IN PLACE of L2
 C USE L5, OR L7, OR L8 AS L2 DEPENDING ON INPUT IFREQ
-                  IF(RECORD(4:4).EQ."E".AND.I.EQ.5.AND.IFREQ.LE.5) I=2
+C Apr25, 2020  ALSO FOR IFREQ=6 USE E5/L5
+C                 IF(RECORD(4:4).EQ."E".AND.I.EQ.5.AND.IFREQ.LE.5) I=2
+                  IF(RECORD(4:4).EQ."E".AND.I.EQ.5.AND.IFREQ.LE.6) I=2
                   IF(RECORD(4:4).EQ."E".AND.I.EQ.7.AND.IFREQ.EQ.7) I=2
                   IF(RECORD(4:4).EQ."E".AND.I.EQ.8.AND.IFREQ.EQ.8) I=2
 C USE BEIDOU B2 (RNX3 CODE = 7) FOR L2 
                   IF(RECORD(4:4).EQ."C".AND.I.EQ.7) I=2
+C APR 25, 2020    FOR IFREQ= 6 USE BEIDOU B3 (RNX3 CODE = 6) FOR L2
+                  IF(RECORD(4:4).EQ."C".AND.I.EQ.6.AND.IFREQ.EQ.6) I=2
                   IF(I.GE.1.AND.I.LE.2) THEN
                    READ(LUPCV,'(A80)',END=500) RECORD
                    READ(RECORD,'(3F10.2)',ERR=600) (DANTS(J),
@@ -30270,6 +30413,8 @@ C
       CHARACTER*5  L2CODE(3)
       CHARACTER*12 LDCB(3,2)
       CHARACTER*12 P3FLT(2,2)
+C Apr 25, 2020
+      CHARACTER*3 L2E, L2C, L2
       INTEGER*4 IDSVBLK(MAXBLK,32),NSVBLK(MAXBLK)
      &         ,I,IREFIN,IBLK,IPRN,IDBLK,J
       REAL*8    DX(MAXBLK),DY(MAXBLK),DZ(MAXBLK)
@@ -30635,13 +30780,24 @@ C GLONASS
      &                   'L1R',(IDNINT(PCVNEU(I,2)),I=1,3),
      &                   'L2R',(IDNINT(PCVNEU(I+3,2)),I=1,3)
 C GALILEO
+C Apr 25, 2020 -start
+        L2E= 'L5E'
+        L2C= 'L7C'
+        IF(IFREQ.EQ.6) L2C= 'L6C'
+        IF(IFREQ.EQ.7) L2E= 'L7E'
+        IF(IFREQ.EQ.8) L2E= 'L8E'
+C Apr 25, 2020 -end
         IF(IGF(75).NE.99) WRITE(LPR,1026)
      &                   'L1E',(IDNINT(PCVNEU(I,3)),I=1,3),
-     &                   'L5E',(IDNINT(PCVNEU(I+3,3)),I=1,3)
+C Apr 25, 2020
+C    &                   'L5E',(IDNINT(PCVNEU(I+3,3)),I=1,3)
+     &                    L2E ,(IDNINT(PCVNEU(I+3,3)),I=1,3)
 C BEIDOU 
         IF(IGF(101).NE.99) WRITE(LPR,1026)
      &                   'L1C',(IDNINT(PCVNEU(I,4)),I=1,3),
-     &                   'L7C',(IDNINT(PCVNEU(I+3,4)),I=1,3)
+C Apr 25, 2020
+C    &                   'L7C',(IDNINT(PCVNEU(I+3,4)),I=1,3)
+     &                    L2C ,(IDNINT(PCVNEU(I+3,4)),I=1,3)
        IF( .NOT. FOUND22 )
      &  WRITE(LPR,1024)  DOMEWARN(LNG)
       DZE=5
@@ -30675,9 +30831,13 @@ C GALILEO RX PCV
      &                                IDNINT((I-1)*5/DZE+1),3)),I=1,19),
      &           'L1E',(IDNINT(PCVELV(IDNINT(360/DAZ+1),
      &                               IDNINT((I-1)*5/DZE+1),3)),I=1,19),
-     &           'L5E',(IDNINT(PCVELV(1,
+C Apr 20, 2020
+C    &           'L5E',(IDNINT(PCVELV(1,
+     &            L2E ,(IDNINT(PCVELV(1,
      &                               IDNINT((I-1)*5/DZE+92),3)),I=1,19),
-     &           'L5E',(IDNINT(PCVELV(IDNINT(360/DAZ+1),
+C Apr 25, 2020
+C    &           'L5E',(IDNINT(PCVELV(IDNINT(360/DAZ+1),
+     &            L2E ,(IDNINT(PCVELV(IDNINT(360/DAZ+1),
      &                               IDNINT((I-1)*5/DZE+92),3)),I=1,19)
 C GALILEO RX PCV
         IF(IGF(101).NE.99) WRITE(LPR,1037)
@@ -30685,9 +30845,13 @@ C GALILEO RX PCV
      &                                IDNINT((I-1)*5/DZE+1),4)),I=1,19),
      &           'L1C',(IDNINT(PCVELV(IDNINT(360/DAZ+1),
      &                               IDNINT((I-1)*5/DZE+1),4)),I=1,19),
-     &           'L7C',(IDNINT(PCVELV(1,
+C Apr 25, 2020
+C    &           'L7C',(IDNINT(PCVELV(1,
+     &            L2C ,(IDNINT(PCVELV(1,
      &                               IDNINT((I-1)*5/DZE+92),4)),I=1,19),
-     &           'L7C',(IDNINT(PCVELV(IDNINT(360/DAZ+1),
+C Apr 25, 2020
+C    &           'L7C',(IDNINT(PCVELV(IDNINT(360/DAZ+1),
+     &            L2C ,(IDNINT(PCVELV(IDNINT(360/DAZ+1),
      &                               IDNINT((I-1)*5/DZE+92),4)),I=1,19)
         IF( IPC .LE. 1 )
      &  WRITE(LPR,1036)
@@ -30703,15 +30867,22 @@ C GALILEO RX PCV
  1034 FORMAT(5x,i4,3f10.2)
 C
 C write out sat elvpcv only when IPC>1
-C PRINT ONLY THE FIRST 15 ENTRIES: 0-14 DEG
+C PRINT ONLY THE FIRST 15 ENTRIES:               
 C
+C Apr 25, 2020 - start
+      L2= 'L2 '
+      IF(IPRN.GT. 64.AND.IPRN.LE.100) L2 = L2E
+      IF(IPRN.GT.100.AND.IPRN.LE.136) L2 = L2C
+C Apr 25, 2020 -end
         IF (IPC.GT.1)
      &     WRITE(LPR,1033) IPRN, DSVX(IPRN)*1.d3, DSVY(IPRN)*1.d3,
      &              DSVZ(IPRN)*1.d3,
      &              ISVBLK(IPRN),'L1',(IDNINT(PCVSAT(IPRN,I)),I=1,15),
 C Feb 23, 2019
 C    &              ISVBLK(IPRN),'L2',(IDNINT(PCVSAT(IPRN,I+21)),I=1,15)
-     &              ISVBLK(IPRN),'L2',(IDNINT(PCVSAT(IPRN,I+41)),I=1,15)
+C Apr 25, 2020
+C    &              ISVBLK(IPRN),'L2',(IDNINT(PCVSAT(IPRN,I+41)),I=1,15)
+     &              ISVBLK(IPRN), L2 ,(IDNINT(PCVSAT(IPRN,I+41)),I=1,15)
          ENDIF
         END DO
       ELSE
@@ -33450,6 +33621,9 @@ C
        write(*,*)' **** USING BIA FILE: ', NAMBIA
 C INITILIZE BIASES
       DO I= 1, 136
+C Apr 25, 2020
+       PRDC(I,8) = 0.D0
+       PRDC(I,9) = 0.D0
        IDSVBIA(I)= 0  
        C1W(I)= 0.D0
        C2W(I)= 0.D0
