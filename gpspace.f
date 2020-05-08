@@ -2558,7 +2558,10 @@ C
         NDAY=MJD-MJDS+1
 C Mar 23, 2020
         CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
-     &              DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
+c 2020May08 : use current year rather than start year
+     &              DP2C2,  IYEAR , JULD, IERR, IEND, IFREQ, IPC )
+c    &              DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
+c 2020May08 : use current year rather than start year
 c 2020Apr16 : day boundary AR NL jumps handling
         DO JGNSS=1,4
          IF( IGNSSREF(JGNSS) .NE. 0 .AND.
@@ -33622,8 +33625,12 @@ C
 C INITILIZE BIASES
       DO I= 1, 136
 C Apr 25, 2020
-       PRDC(I,8) = 0.D0
-       PRDC(I,9) = 0.D0
+c 2020May08 : wrong indexing
+c      PRDC(I,8) = 0.D0
+c      PRDC(I,9) = 0.D0
+       PRDC(8,I) = 0.D0
+       PRDC(9,I) = 0.D0
+c 2020May08 : wrong indexing
        IDSVBIA(I)= 0  
        C1W(I)= 0.D0
        C2W(I)= 0.D0
