@@ -325,6 +325,10 @@ C
       CHARACTER*80 NAMDEF
       CHARACTER*80 NAMFLT
       CHARACTER*80 NAMSVB
+c 2020May12 : new code bias general input
+      CHARACTER*80 NAMBIA
+      CHARACTER*80 NAMBIAS(MAXDAYS)
+c 2020May12 : new code bias general input
       CHARACTER*80 NAMOLC
       CHARACTER*80 NAMPCV
       CHARACTER*80 NAMTRF
@@ -526,6 +530,9 @@ c     INTEGER*4 IPRNFX(MAXDAYS)
 c     REAL*8    SMDCLK,NLPERIOD,NLWL,NCLKNL
       INTEGER*4 IPRNFX(4,MAXDAYS)
       REAL*8    SMDCLK(4),NLWL(4)
+c 2020May12 : store WL wavelength per constellation
+     &         ,WLWL(4)
+c 2020May12 : store WL wavelength per constellation
 c 2020Apr16 : day boundary AR NL jumps handling
       INTEGER*4 NSVCOMN,IDXN(MAXOBS),IDXO(MAXOBS)
       LOGICAL*8 SVRELAX(MAXOBS)
@@ -573,6 +580,10 @@ C BETAINI- INI BETA ANGLE OF ECLPS START(BEI EXCLUDED)
       REAL*8 BETAINI(160)
       DATA   BETAINI/160*0.D0/
       LOGICAL*4 TESTMISC
+c 2020May12 : new code bias general input
+      INTEGER*4 ICDBIAS,IPHBIAS
+      DATA ICDBIAS,IPHBIAS/0,0/
+c 2020May12 : new code bias general input
 C
       DATA YAWMODEL/0/
 C RTCM SPECIFIC INITIALIZATION
@@ -853,7 +864,10 @@ C
 C     READ LIST OF DEFAULT FILE NAMES
 C
       CALL GETDEF(   LUI, LUO, LUDEF, NAMFLT, 
-     &               NAMSVB, NAMOLC, NAMPCV, NAMTRF, NAMMET, NAMIPX,
+c 2020May12 : new code bias general input
+     &       NAMSVB, NAMBIA, NAMOLC, NAMPCV, NAMTRF, NAMMET, NAMIPX,
+c    &               NAMSVB, NAMOLC, NAMPCV, NAMTRF, NAMMET, NAMIPX,
+c 2020May12 : new code bias general input
      &               NAMORG, NAMERP, NAMSTC, NLNORG,  LNG )
 C
 C     READ INITIAL PARAMETERS AND WEIGHTS
@@ -884,6 +898,14 @@ C
       CALL PGMLBL( LUO, IVERSION, IRLEASE, NAMORG, NLNORG, LNG)
 C
     5 CONTINUE
+c 2020May12 : clearing NAMEPH, NAMCLK, NAMION, NAMBIAS
+      DO I=1,MAXDAYS
+       WRITE(NAMEPH(I),'(80A1)') ' '
+       WRITE(NAMCLK(I),'(80A1)') ' '
+       WRITE(NAMION(I),'(80A1)') ' '
+       WRITE(NAMBIAS(I),'(80A1)') ' '
+      END DO
+c 2020May12 : clearing NAMEPH, NAMCLK, NAMBIAS, NAMION
       WRITE(NAMOBS,'(80A1)') ' '
       WRITE(LUO,710)
       READ(LUI,720) NAMOBS
@@ -1027,6 +1049,9 @@ c     NLPERIOD=NLWL/C*1.D9
       CALL FREQ12(IPRN, F1, F2, F1S, F2S, F12S, F1ION, F2ION,
      &            AL1, AL2, AL3, AL4, IFREQ )
       NLWL(J)=AL3
+c 2020May12 : store WL wavelength per constellation
+      WLWL(J)=AL4
+c 2020May12 : store WL wavelength per constellation
       END DO
 c 2020Apr16 : day boundary AR NL jumps handling
 C
@@ -1125,7 +1150,7 @@ C       DO I=1,32
         CLOSE(LUMET)
        ENDDO
 C
-C OPEN CNES NSB IN gpsppp.wsb FOR AR IF IT EXIST
+C OPEN CNES NSB IN gpsppp.nsb FOR AR IF IT EXIST
 C input NL Sat Biase (NSB) in gpsppp.nsb
 C
         OPEN ( LUMET, FILE='gpsppp.nsb', STATUS='OLD',ERR=31)
@@ -1161,7 +1186,11 @@ C
       CALL FNAME( NAMOBS, JNAM, LUI, LUO, LUMEA, ISVEPH,
      &            IFMTE, LUEPH,
      &            LPR, LPOS, LRES, LUIPX, LUCOR, LUSES, LUCLK, 
-     &            LUION, ISVCLK,  NAMCLK, NAMEPH, NAMION, IDCFREQ, 
+c 2020May12 : new code bias general input
+c    &            LUION, ISVCLK,  NAMCLK, NAMEPH, NAMION, IDCFREQ, 
+     &            LUION, ISVCLK,  NAMCLK, NAMEPH, NAMBIAS, ICDBIAS,
+     &            IPHBIAS, NAMION, IDCFREQ, 
+c 2020May12 : new code bias general input
      &            IONSLM, REFNAM, REFXYZ, REFHGT, NBDAY, IYEARS,
      &            IMTHS, IDAYS, ISLMFMT, IERR, IULTRA, IMINACC, LNG )
 
@@ -1218,8 +1247,13 @@ C
      &     IFREQ, IOBPOS,
      &     IFLT, NAMFLT, FLTPAR, IFLTON, IPC, VSCALE, 
      &     IC1USE, IC2USE, IDCBUSE, SDPR, SDCLK0, 
-     &     ISVB, NAMSVB, IGNSS, ISVN, IBLK, 
-     &     DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
+c 2020May12 : new code bias general input
+     &     NAMBIA, NAMBIAS(1), STNA, ICDBIAS, IPHBIAS, ISVB, NAMSVB,
+     &     IGNSS, ISVN, IBLK, DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2,
+     &     AVCLK, PRDC,
+c    &     ISVB, NAMSVB, IGNSS, ISVN, IBLK, 
+c    &     DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
+c 2020May12 : new code bias general input
      &     IOLC, NAMOLC, NOCOF, XRVMRK, DTM, DMJDOL, AMPL, PHAS, 
 C Mar 23, 2020
 C    &     IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
@@ -1263,11 +1297,16 @@ C USAGE OF EXTERNAL YAW INFO DISABLED UNTIL FIRM REFERENCE DEFINITION
      &               ITMBUF, AMBBUF, YAWBUF, IODBUF )
       END IF
 C Feb 23, 2019 - scale GAL WL (if available
-       CALL FREQ12(65     , F1, F2, F1S, F2S, F12S, F1ION, F2ION,
-     &                   AL1, AL2, AL3, AL4, IFREQ )
+c 2020May12 : store WL wavelength per constellation
+c      CALL FREQ12(65     , F1, F2, F1S, F2S, F12S, F1ION, F2ION,
+c    &                   AL1, AL2, AL3, AL4, IFREQ )
+c 2020May12 : store WL wavelength per constellation
        DO I=65,100
 C Scale GAL WL according IFREQ (SEE FREQ12)
-        PRDC(9,I)= PRDC(9,I)*AL4/0.86192D0
+c 2020May12 : store WL wavelength per constellation
+        PRDC(9,I)= PRDC(9,I)*WLWL(3)/WLWL(1)
+c       PRDC(9,I)= PRDC(9,I)*AL4/0.86192D0
+c 2020May12 : store WL wavelength per constellation
 C       PRDC(9,I)= 0.0d0                   
        END DO
 C
@@ -1329,8 +1368,13 @@ C
      &                 PLHMRK(1),PLHMRK(2),PLHMRK(3))
       END IF
 C Mar 23, 2020
-      CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
-     &             DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
+c 2020May12 : new code bias general input
+c     CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
+c    &             DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
+      CALL BIAINP(LUMET, NAMBIAS(NDAY), STNA, ICDBIAS, IPHBIAS, PRDC,
+     &            DP1P2, DP1C1, DP2C2, IYEARS, JULD, IERR, IEND,
+     &            IFREQ, IPC )
+c 2020May12 : new code bias general input
 C
 C----------------------------------------------------------------------
 C     READ SINGLE LAYER MODEL AND STORE IN GRID
@@ -2557,20 +2601,34 @@ C
         RELAXAMB=.TRUE.
         NDAY=MJD-MJDS+1
 C Mar 23, 2020
-        CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
-c 2020May08 : use current year rather than start year
-     &              DP2C2,  IYEAR , JULD, IERR, IEND, IFREQ, IPC )
-c    &              DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
-c 2020May08 : use current year rather than start year
+c 2020May12 : new code bias general input
+c       CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
+        CALL BIAINP(LUMET, NAMBIAS(NDAY), STNA, ICDBIAS, IPHBIAS, PRDC,
+     &              DP1P2, DP1C1, DP2C2, IYEAR, JULD, IERR, IEND, IFREQ,
+     &              IPC )
+cc 2020May08 : use current year rather than start year
+c    &              DP2C2,  IYEAR , JULD, IERR, IEND, IFREQ, IPC )
+cc    &              DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
+cc 2020May08 : use current year rather than start year
+c 2020May12 : new code bias general input
 c 2020Apr16 : day boundary AR NL jumps handling
+c 2020May12 : new code bias general input
+        IF(IPHBIAS.NE.0) THEN
+c 2020May12 : new code bias general input
         DO JGNSS=1,4
          IF( IGNSSREF(JGNSS) .NE. 0 .AND.
      &       PRDC(9,IGNSSREF(JGNSS)) .NE. 0.D0 ) THEN
           DN12REF(JGNSS) = DN12REF(JGNSS) +
-     &       (PRDC(9,IGNSSREF(JGNSS))-PRDCREF(JGNSS))/AL4
+c 2020May12 : store WL wavelength per constellation
+     &       (PRDC(9,IGNSSREF(JGNSS))-PRDCREF(JGNSS))/WLWL(JGNSS)
+c    &       (PRDC(9,IGNSSREF(JGNSS))-PRDCREF(JGNSS))/AL4
+c 2020May12 : store WL wavelength per constellation
           PRDCREF(JGNSS)=PRDC(9,IGNSSREF(JGNSS))
          ENDIF
         END DO
+c 2020May12 : new code bias general input
+        ENDIF
+c 2020May12 : new code bias general input
 c 2020Apr16 : day boundary AR NL jumps handling
 C
 C----------------------------------------------------------------------
@@ -13183,7 +13241,11 @@ C
       SUBROUTINE FNAME( INAM, JNAM, LU, LUO, LUMEA, IPEP,
      &                  IFMTE, LUEPH,
      &                  LPR, LPOS, LRES, LIPX, LUCOR, LDAY, 
-     &                  LUCLK, LUSLM, IDC, NAMCLK, NAMEPH, NAMSLM,
+c 2020May12 : new code bias general input
+c    &                  LUCLK, LUSLM, IDC, NAMCLK, NAMEPH, NAMSLM,
+     &                  LUCLK, LUSLM, IDC, NAMCLK, NAMEPH, NAMBIAS,
+     &                  ICDBIAS, IPHBIAS, NAMSLM,
+c 2020May12 : new code bias general input
      &                  IDCFREQ, ISLM, REFNAM,  REFXYZ, REFHGT, NBDAY,
      &                  IYEARS, IMTHS, IDAYS, ISLMFMT, IERR,
      &                  IULTRA, IMINACC, LNG )
@@ -13217,6 +13279,9 @@ C
 C
       CHARACTER*80  INAM, JNAM
       CHARACTER*80  NAMEPH(*)
+c 2020May12 : new code bias general input
+      CHARACTER*80  NAMBIAS(*)
+c 2020May12 : new code bias general input
       CHARACTER*80  NAMCLK(*)
       CHARACTER*80  NAMSLM(*)
       INTEGER*4     LU, LUO, LUMEA, LUEPH, LUCOR, IULTRA, LNG
@@ -13230,6 +13295,9 @@ C
 C
       CHARACTER*80  KNAM
       INTEGER*4 IOS,NERR,IDOBS
+c 2020May12 : new code bias general input
+      INTEGER*4 IDAY, ICDBIAS, IPHBIAS
+c 2020May12 : new code bias general input
 C
       IERR = 0
       NERR = 3
@@ -13262,6 +13330,22 @@ C
      &                IYEARS, IMTHS, IDAYS, NBDAY, IERR, IULTRA,
      &                IMINACC, LNG )
         IF (IERR .NE. 0) GO TO 1000
+c 2020May12 : new code bias general input
+C FORM INPUT BIA PRRODUCTS FILENAMES FROM EPHEMERIS
+C CHECK EXISTENCE OF FIRST AND ADJUST ICDBIAS AND IPHBIAS FLAGS
+        DO IDAY=1,NBDAY
+         CALL CHSFX ( NAMEPH(IDAY), NAMBIAS(IDAY), '.bia' )
+        END DO
+        IPHBIAS=ICDBIAS
+        ICDBIAS=2
+        OPEN(LPOS, FILE=NAMBIAS(1), STATUS='OLD', ERR=350)
+        CLOSE(LPOS)
+        GOTO 351
+  350   CONTINUE
+        ICDBIAS=IPHBIAS
+  351   CONTINUE
+        IPHBIAS=ICDBIAS
+c 2020May12 : new code bias general input
 C
 C-----------------------------------------------------------------------
 C     POSITION PLOT FILE NAME IS INPUT FILE NAME
@@ -14061,7 +14145,10 @@ C Droit d'auteur (c) Gouvernement du Canada, 2018. Sous termes de Licence MIT
 C
 C
       SUBROUTINE GETDEF(   LUI, LUO, LUDEF, NAMFLT, 
-     &                     NAMSVB, NAMOLC, NAMPCV, NAMTRF, NAMMET,
+c 2020May12 : new code bias general input
+     &             NAMSVB, NAMBIA, NAMOLC, NAMPCV, NAMTRF, NAMMET,
+c    &                     NAMSVB, NAMOLC, NAMPCV, NAMTRF, NAMMET,
+c 2020May12 : new code bias general input
      &                     NAMIPX, NAMORG, NAMERP, NAMSTC, NLNORG, LNG )
 C
 C     PURPOSE:   GET DEFAULT FILE NAMES AND SELECT LANGUAGE
@@ -14079,6 +14166,9 @@ C
       INTEGER*4 LUI,LUO,LUDEF,NLNORG,LNG
       CHARACTER*80 NAMFLT
       CHARACTER*80 NAMSVB
+c 2020May12 : new code bias general input
+      CHARACTER*80 NAMBIA
+c 2020May12 : new code bias general input
       CHARACTER*80 NAMOLC
       CHARACTER*80 NAMPCV
       CHARACTER*80 NAMTRF
@@ -14099,6 +14189,9 @@ C     SET DEFAULT LANGUAGE AND FILE NAMES
 C
       NAMFLT='gpsppp.flt'
       NAMSVB='gpsppp.svb'
+c 2020May12 : new code bias general input
+      NAMBIA='gpsppp.bia'
+c 2020May12 : new code bias general input
       NAMOLC='gpsppp.olc'
       NAMPCV='gpsppp.pcv'
       NAMTRF='gpsppp.trf'
@@ -14116,6 +14209,9 @@ C
       IF ( IDSTR .EQ. 'LNG' ) NAMLNG=STRING
       IF ( IDSTR .EQ. 'TRF' ) NAMTRF=STRING
       IF ( IDSTR .EQ. 'SVB' ) NAMSVB=STRING
+c 2020May12 : new code bias general input
+      IF ( IDSTR .EQ. 'BIA' ) NAMBIA=STRING
+c 2020May12 : new code bias general input
       IF ( IDSTR .EQ. 'OLC' ) NAMOLC=STRING
       IF ( IDSTR .EQ. 'PCV' ) NAMPCV=STRING
       IF ( IDSTR .EQ. 'FLT' ) NAMFLT=STRING
@@ -19215,8 +19311,13 @@ C
       SUBROUTINE RDDEF(   LUI, LUO, LUDEF, IYEARS, IMTHS, IDAYS,
      &           IFLT, NAMFLT, FLTPAR, IFLTON, IPC, VSCALE,
      &           IC1USE, IC2USE, IDCBUSE, SDPR, SDCLK,
-     &           ISVB, NAMSVB, IGNSS, ISVN, ISVBLK, 
-     &           DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
+c 2020May12 : new code bias general input
+     &           NAMBIA, NAMBIAS, STNA, ICDBIAS, IPHBIAS, ISVB, NAMSVB,
+     &           IGNSS, ISVN, ISVBLK, DSVX, DSVY, DSVZ, DP1P2, DP1C1,
+     &           DP2C2, AVCLK, PRDC,
+c    &           ISVB, NAMSVB, IGNSS, ISVN, ISVBLK, 
+c    &           DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
+c 2020May12 : new code bias general input
      &           IOLC, NAMOLC, XRVMRK, DTM, NOCOF, AMPL, PHAS, 
      &           DMJDOL, TW,
 C Mar 23, 2020
@@ -19247,7 +19348,11 @@ C
      &            ,ICLKFIT
       REAL*8      CLKY0,CLKD0,UCLKY0,UCLKD0,CLKSD0
       LOGICAL*4  FOUND22
-      CHARACTER*80 NAMFLT,NAMSVB,NAMOLC,NAMPCV,NAMTRF,NAMMET
+c 2020May12 : new code bias general input
+      CHARACTER*80 NAMFLT,NAMSVB,NAMOLC,NAMPCV,NAMTRF,NAMMET,NAMBIA,
+     &             NAMBIAS
+c     CHARACTER*80 NAMFLT,NAMSVB,NAMOLC,NAMPCV,NAMTRF,NAMMET
+c 2020May12 : new code bias general input
       CHARACTER*1  IGNSS(*)
       CHARACTER*20 ANTNAM
       CHARACTER*5  RFRAME
@@ -19269,6 +19374,11 @@ C Mar 23, 2020
 C
       INTEGER*4 I, IGF(*)
       INTEGER*4 IFREQ
+c 2020May12 : new code bias general input
+      CHARACTER    STNA*40
+      INTEGER*4 JULD, IERR, IEND, ICDBIAS, IPHBIAS, JCDBIAS, JPHBIAS
+      REAL*8 PRDC(10,*)
+c 2020May12 : new code bias general input
 C
 C     READ FILTER PARAMETERS
 C   
@@ -19295,6 +19405,28 @@ c!    WRITE(*,*) 'CALLING RDSAT',LUDEF,NAMSVB
      &            ISVN, ISVBLK, DSVX, DSVY, DSVZ, 
      &            DP1P2, DP1C1, DP2C2, AVCLK, ISVB, IGF)
       CLOSE (LUDEF)
+c 2020May12 : new code bias general input
+      CALL JULDM ( JULD, IYEARS, IMTHS, IDAYS, 1 )
+C SUPERSEDE SVB WITH GPSPPP.BIA OR DEF BIA ENTRY
+      CALL BIAINP(LUDEF, NAMBIA, STNA, JCDBIAS, JPHBIAS, PRDC, DP1P2,
+     &            DP1C1, DP2C2,  IYEARS , JULD, IERR, IEND, IFREQ, IPC )
+C SUPERSEDE WITH FIRST DAILY BIA FILE CONSISTENT WITH EPH
+      IF( ICDBIAS .EQ. 2 ) THEN
+       CALL BIAINP(LUDEF, NAMBIAS, STNA, ICDBIAS, IPHBIAS, PRDC, DP1P2,
+     &             DP1C1, DP2C2,  IYEARS , JULD, IERR, IEND, IFREQ, IPC)
+       IF( ICDBIAS.EQ.1 ) ICDBIAS=2
+       IF( IPHBIAS.EQ.1 ) IPHBIAS=2
+      ENDIF
+      ICDBIAS=ICDBIAS+JCDBIAS
+      IPHBIAS=IPHBIAS+JPHBIAS
+C UNDO PHASE BIASES SETTINGS; PHASE BIASES WILL BE REREAD LATER ON
+      IF(IPHBIAS.NE.0) THEN
+       DO I=1,MAXSAT
+        PRDC(8,I) = 0.D0
+        PRDC(9,I) = 0.D0
+       END DO
+      ENDIF
+c 2020May12 : new code bias general input
 C
 C     READ OCEAN LOADING COEFFICIENTS
 C
@@ -30320,8 +30452,13 @@ C
      &           IFREQ, IOBPOS,
      &           IFLT, NAMFLT, FLTPAR, IFLTON, IPC, VSCALE,
      &           IL1CODE, IL2CODE, ILDCB, SDPR, SDCLK,
-     &           ISVB, NAMSVB, IGNSS, ISVN, ISVBLK, 
-     &           DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
+c 2020May12 : new code bias general input
+     &           NAMBIA, NAMBIAS, STNA, ICDBIAS, IPHBIAS, ISVB, NAMSVB,
+     &           IGNSS, ISVN, ISVBLK, DSVX, DSVY, DSVZ, DP1P2, DP1C1,
+     &           DP2C2, AVCLK, PRDC,
+c    &           ISVB, NAMSVB, IGNSS, ISVN, ISVBLK, 
+c    &           DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
+c 2020May12 : new code bias general input
      &           IOLC, NAMOLC, NOCOF, XRVMRK, DTM, DMJDOL, AMPL, PHAS, 
 C Mar 23, 2020
 C    &           IPCV, NAMPCV, ANTNAM, PCVNEU, PCVELV, PCVSAT,
@@ -30354,7 +30491,11 @@ C
       INTEGER*4    IPXR
       CHARACTER*80 NAMIPX
       CHARACTER*80 NAMTRF,NAMMET
-      CHARACTER*80 NAMDEF,NAMFLT,NAMSVB,NAMOLC,NAMPCV
+c 2020May12 : new code bias general input
+c     CHARACTER*80 NAMDEF,NAMFLT,NAMSVB,NAMOLC,NAMPCV
+      CHARACTER*80 NAMDEF,NAMFLT,NAMSVB,NAMBIA,NAMBIAS,NAMOLC,NAMPCV
+      CHARACTER*40 STNA
+c 2020May12 : new code bias general input
       CHARACTER*20 ANTNAM
       CHARACTER*15 METSRC(7,2)
       INTEGER*4    ITRP(3)
@@ -30370,7 +30511,11 @@ C
       INTEGER*4 ISVN(*),ISVBLK(*), IOBPOS(*), IGF(*)
       REAL*8    FLTPAR(*),DSVX(*),DSVY(*),DSVZ(*),DP1P2(*),DP1C1(*),
      &          DP2C2(*)
-      REAL*8    AVCLK(*)
+c 2020May12 : new code bias general input
+      INTEGER*4 ICDBIAS,IPHBIAS
+      REAL*8    AVCLK(*), PRDC(10,*)
+c     REAL*8    AVCLK(*)
+c 2020May12 : new code bias general input
 C
 C AMPL(4,J) PHAS(4,j) contains frequency/phase of tidal term
 C
@@ -30398,6 +30543,10 @@ C
       CHARACTER*20 IPXHDR(2)
       CHARACTER*20 FLTHDR(2)
       CHARACTER*20 SVBHDR(2)
+c 2020May12 : new code bias general input
+      CHARACTER*20 DCBHDR(2)
+      CHARACTER*20 PHBHDR(2)
+c 2020May12 : new code bias general input
       CHARACTER*20 PCVHDR(2)
       CHARACTER*20 NOPCV(2)
       CHARACTER*10 TRPDATE(2)
@@ -30507,7 +30656,13 @@ C
       DATA (FLTHDR(I),I=1,2) 
      &     /'Filter thresholds   ','Tolerance du filtre '/
       DATA (SVBHDR(I),I=1,2) 
-     &     /'Satellite offsets   ','Biais des satellites'/
+     &     /'Satellite offsets   ','Excentrements satel.'/
+c 2020May12 : new code bias general input
+      DATA (DCBHDR(I),I=1,2) 
+     &     /'Satellite code bias ','Biais code satel.   '/
+      DATA (PHBHDR(I),I=1,2) 
+     &     /'Satellite phase bias','Biais phase satel.  '/
+c 2020May12 : new code bias general input
       DATA (PCVHDR(I),I=1,2) 
      &     /'Antenna offsets     ','Biais des antennes  '/
       DATA (OLCHDR(I),I=1,2) 
@@ -30624,8 +30779,13 @@ C
       CALL RDDEF( LUI, LUO, LUDEF, IYEARS, IMTHS, IDAYS,
      &            IFLT, NAMFLT, FLTPAR, IFLTON, IPC, VSCALE,
      &            IL1CODE, IL2CODE, ILDCB, SDPR, SDCLK,
-     &            ISVB, NAMSVB, IGNSS, ISVN, ISVBLK, 
-     &            DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
+c 2020May12 : new code bias general input
+     &            NAMBIA, NAMBIAS, STNA, ICDBIAS, IPHBIAS, ISVB, NAMSVB,
+     &            IGNSS, ISVN, ISVBLK, DSVX, DSVY, DSVZ, DP1P2, DP1C1,
+     &            DP2C2, AVCLK, PRDC,
+c    &            ISVB, NAMSVB, IGNSS, ISVN, ISVBLK, 
+c    &            DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
+c 2020May12 : new code bias general input
      &            IOLC, NAMOLC, XRVMRK, DTM, NOCOF, AMPL, PHAS, 
      &            DMJDOL, TW,
 C Mar 23, 2020
@@ -30685,6 +30845,16 @@ C     Cycle Slip Detection Tresholds
 C
       WRITE(LPR,1100) FLTHDR(LNG),' ',NAMFLT 
       WRITE(LPR,1100) SVBHDR(LNG),' ',NAMSVB
+c 2020May12 : new code bias general input
+      IF(ICDBIAS.EQ.1.OR.ICDBIAS.EQ.3)
+     & WRITE(LPR,1100) DCBHDR(LNG),' ',NAMBIA
+      IF(ICDBIAS.EQ.2.OR.ICDBIAS.EQ.3)
+     & WRITE(LPR,1100) DCBHDR(LNG),' ',NAMBIAS
+      IF(IPHBIAS.EQ.1.OR.IPHBIAS.EQ.3)
+     & WRITE(LPR,1100) PHBHDR(LNG),' ',NAMBIA
+      IF(IPHBIAS.EQ.2.OR.IPHBIAS.EQ.3)
+     & WRITE(LPR,1100) PHBHDR(LNG),' ',NAMBIAS
+c 2020May12 : new code bias general input
       WRITE(LPR,1100) PCVHDR(LNG),' ',NAMPCV
       WRITE(LPR,1100) OLCHDR(LNG),' ',NAMOLC
       WRITE(LPR,1100) TRFHDR(LNG),' ',NAMTRF
@@ -30870,7 +31040,10 @@ C    &           'L7C',(IDNINT(PCVELV(IDNINT(360/DAZ+1),
      &                               IDNINT((I-1)*5/DZE+92),4)),I=1,19)
         IF( IPC .LE. 1 )
      &  WRITE(LPR,1036)
-     &  'SV antenna offsets in body-axis'
+c 2020May12 : new code bias general input
+     &  'SV antenna offsets in body-axis and code biases'
+c    &  'SV antenna offsets in body-axis'
+c 2020May12 : new code bias general input
         IF( IPC .GT. 1 )
      &  WRITE(LPR,1032)
      &  'SV ant offset variation wrt to nadir angle(NAD) in deg'
@@ -30879,7 +31052,11 @@ C    &           'L7C',(IDNINT(PCVELV(IDNINT(360/DAZ+1),
         IF(IPC.LE.1)
      &     WRITE(LPR,1034) IPRN, DSVX(IPRN)*1.d3, DSVY(IPRN)*1.d3,
      &              DSVZ(IPRN)*1.d3 
- 1034 FORMAT(5x,i4,3f10.2)
+c 2020May12 : new code bias general input
+     &             ,DP1P2(IPRN),DP1C1(IPRN),DP2C2(IPRN)
+ 1034 FORMAT(5x,i4,3f10.2,3f9.3)
+c1034 FORMAT(5x,i4,3f10.2)
+c 2020May12 : new code bias general input
 C
 C write out sat elvpcv only when IPC>1
 C PRINT ONLY THE FIRST 15 ENTRIES:               
@@ -30987,7 +31164,11 @@ C
      &       ' 11 12 13 14')
  1033 FORMAT(5x,i4,3f10.2/5x,I4,2x,A2,15(I3),/,5x,I4,2x,A2,15(I3))
  1031 FORMAT(/,1X,A55,1X,A20)
- 1036 FORMAT(5X,A55,/,5X,' PRN  X-offset  Y-offset  Z-offset')
+c 2020May12 : new code bias general input
+c1036 FORMAT(5X,A55,/,5X,' PRN  X-offset  Y-offset  Z-offset')
+ 1036 FORMAT(5X,A55,/,5X,
+     & ' PRN  X-offset  Y-offset  Z-offset P1P2(ns) C1P1(ns) C2P2(ns)')
+c 2020May12 : new code bias general input
  1035 FORMAT(/,1X,A55,1X,A10)
  1040 FORMAT(1X,A60,/,
      &       2X,'Term  Frequ.   Phase',3('  Ampl.    Phase'),/,
@@ -33578,8 +33759,13 @@ C
       END
 C Mar 23, 2020 -start
 C
-      SUBROUTINE BIAINP(LU , NAMEPH, STNA, PRDC, DP1P2, DP1C1,
-     &                  DP2C2, IY, IDOY,  IERR, IEND, IFREQ , IPC )
+c 2020May12 : new code bias general input
+c     SUBROUTINE BIAINP(LU , NAMEPH, STNA, PRDC, DP1P2, DP1C1,
+c    &                  DP2C2, IY, IDOY,  IERR, IEND, IFREQ , IPC )
+      SUBROUTINE BIAINP(LU, NAMBIA, STNA, ICDBIAS, IPHBIAS, PRDC,
+     &                  DP1P2, DP1C1, DP2C2, IY, IDOY, IERR, IEND,
+     &                  IFREQ, IPC )
+c 2020May12 : new code bias general input
 C
 C Soubroutine reads the standard bia format file, computes the DCB 
 C arrays DP1P2, DP1C1, DP2C2; as well as WL and NL ones in PRDC(9,*) and
@@ -33611,8 +33797,12 @@ C IFREQ  - the dual freq option
 C IPC    - print out option      
 C
 C *********************************************************************
-         IMPLICIT NONE
-      CHARACTER*80  NAMBIA, NAMEPH
+      IMPLICIT NONE
+c 2020May12 : new code bias general input
+c     CHARACTER*80  NAMBIA, NAMEPH
+      CHARACTER*80  NAMBIA
+      INTEGER*4     ICDBIAS, IPHBIAS
+c 2020May12 : new code bias general input
       CHARACTER*40  STNA            
       CHARACTER*144 RECORD 
       CHARACTER*3 ICOD
@@ -33623,16 +33813,33 @@ C *********************************************************************
 C FRQCY
       REAL*8    F1,   F2, F1S, F2S, F12S, F1ION, F2ION,
      &          AL1, AL2, AL3, AL4
-C CODE BIASES
-      REAL*8  C1W(160), C2W(160),C1C(160), C2C(160), C2S(160),C2L(160),
-     &        C5Q(160), C5X(160),C1P(160), C2P(160), C1X(160),
+c 2020May12 : new code bias general input
+c CODE BIASES
+c     REAL*8  C1W(160), C2W(160),C1C(160), C2C(160), C2S(160),C2L(160),
+c    &        C5Q(160), C5X(160),C1P(160), C2P(160), C1X(160),
+c PHASE BIASES
+c    &        L1W(160), L2W(160), L1C(160), L5Q(160)
+c CODE BIASES
+      REAL*8  C1W(160,2), C2W(160,2),C1C(160,2), C2C(160,2), C2S(160,2),
+     &        C2L(160,2), C5Q(160,2), C5X(160,2),C1P(160,2), C2P(160,2),
+     &        C1X(160,2),
 C PHASE BIASES
-     &        L1W(160), L2W(160), L1C(160), L5Q(160)
+     &        L1W(160,2), L2W(160,2), L1C(160,2), L5Q(160,2)
+c 2020May12 : new code bias general input
 C
-C Parse the bia file name (the same dir as NAMEPH!)
-      CALL CHSFX( NAMEPH, NAMBIA, '.bia') 
+c 2020May12 : new code bias general input
+cC Parse the bia file name (the same dir as NAMEPH!)
+c     CALL CHSFX( NAMEPH, NAMBIA, '.bia') 
+c 2020May12 : new code bias general input
 C
+c 2020May12 : new code bias general input
+      IERR=1
+      IEND=0
+c 2020May12 : new code bias general input
       OPEN(LU , FILE= NAMBIA, STATUS='OLD',IOSTAT=IOS, ERR=50) 
+c 2020May12 : new code bias general input
+      IERR=0
+c 2020May12 : new code bias general input
        write(*,*)' **** USING BIA FILE: ', NAMBIA
 C INITILIZE BIASES
       DO I= 1, 160
@@ -33644,19 +33851,49 @@ c      PRDC(I,9) = 0.D0
        PRDC(9,I) = 0.D0
 c 2020May08 : wrong indexing
        IDSVBIA(I)= 0  
-       C1W(I)= 0.D0
-       C2W(I)= 0.D0
-       L1W(I)= 0.D0
-       L1C(I)= 0.D0
-       L2W(I)= 0.D0
-       L5Q(I)= 0.D0
-       C1C(I)= 0.D0
-       C1X(I)= 0.D0
-       C2C(I)= 0.D0
-       C2P(I)= 0.D0
-       C2S(I)= 0.D0
-       C5Q(I)= 0.D0
-       C5X(I)= 0.D0
+c 2020May12 : new code bias general input
+       C1W(I,1)= 0.D0
+       C2W(I,1)= 0.D0
+       L1W(I,1)= 0.D0
+       L1C(I,1)= 0.D0
+       L2W(I,1)= 0.D0
+       L5Q(I,1)= 0.D0
+       C1C(I,1)= 0.D0
+       C1X(I,1)= 0.D0
+       C2C(I,1)= 0.D0
+       C2P(I,1)= 0.D0
+       C2S(I,1)= 0.D0
+       C2L(I,1)= 0.D0
+       C5Q(I,1)= 0.D0
+       C5X(I,1)= 0.D0
+       C1W(I,2)=-1.D9
+       C2W(I,2)=-1.D9
+       L1W(I,2)=-1.D9
+       L1C(I,2)=-1.D9
+       L2W(I,2)=-1.D9
+       L5Q(I,2)=-1.D9
+       C1C(I,2)=-1.D9
+       C1X(I,2)=-1.D9
+       C2C(I,2)=-1.D9
+       C2P(I,2)=-1.D9
+       C2S(I,2)=-1.D9
+       C2L(I,2)=-1.D9
+       C5Q(I,2)=-1.D9
+       C5X(I,2)=-1.D9
+c      C1W(I)= 0.D0
+c      C2W(I)= 0.D0
+c      L1W(I)= 0.D0
+c      L1C(I)= 0.D0
+c      L2W(I)= 0.D0
+c      L5Q(I)= 0.D0
+c      C1C(I)= 0.D0
+c      C1X(I)= 0.D0
+c      C2C(I)= 0.D0
+c      C2P(I)= 0.D0
+c      C2S(I)= 0.D0
+c      C5Q(I)= 0.D0
+c      C5X(I)= 0.D0
+c 2020May12 : new code bias general input
       END DO
 C
 30    READ(LU,'(A144)',ERR=20,END=60 ) RECORD
@@ -33668,16 +33905,30 @@ C MJD-NON STANDARD MJDAY BIAS DATUM - IGNORED
 c    & BIAS, SBIAS, MJD
 40    FORMAT(12X, I2, 11X, A3, 6X, 2(I5, 1X, I3, 6X), 15X, 2F12.4, 35X,
      &        I6) 
-      IGNSS=0
+c 2020May12 : new code bias general input
+c     IGNSS=0
+      IGNSS=-1
+C GPS
+      IF(RECORD(12:12).EQ.'G') IGNSS=0
+c 2020May12 : new code bias general input
 C GLONASS
       IF(RECORD(12:12).EQ.'R') IGNSS=32
 C GAL    
       IF(RECORD(12:12).EQ.'E') IGNSS=64
 C BEI     
       IF(RECORD(12:12).EQ.'C') IGNSS=100
+c 2020May12 : new code bias general input
+C SKIP OTHER CONSTELLATIONS
+      IF(IGNSS.LT.0) GOTO 30
+c 2020May12 : new code bias general input
 C
-      IF(BIAS.NE.0.D0.AND.ISV.NE.0) THEN
-       IF(IY.EQ.IYS.AND.IDOY.EQ.IDS) THEN
+c 2020May12 : new code bias general input
+c     IF(BIAS.NE.0.D0.AND.ISV.NE.0) THEN
+c      IF(IY.EQ.IYS.AND.IDOY.EQ.IDS) THEN
+      IF(                 ISV.NE.0) THEN
+       IF((IY.GT.IYS.OR.(IY.EQ.IYS.AND.IDOY.GE.IDS)) .AND.
+     &    (IY.LT.IYE.OR.(IY.EQ.IYE.AND.IDOY.LE.IDE))) THEN
+c 2020May12 : new code bias general input
         ISV= ISV +IGNSS
         IDSVBIA(ISV)= ISV
 C
@@ -33686,38 +33937,94 @@ C
 C NON STANDAD
 c    & BIAS, SBIAS, MJD
 C
-        IF(ICOD.EQ.'C1W') C1W(ISV)= BIAS
-        IF(ICOD.EQ.'C2W') C2W(ISV)= BIAS
-        IF(ICOD.EQ.'L1W') L1W(ISV)= BIAS
-        IF(ICOD.EQ.'L1C') L1C(ISV)= BIAS
-        IF(ICOD.EQ.'L2W') L2W(ISV)= BIAS
-        IF(ICOD.EQ.'C1C') C1C(ISV)= BIAS
-        IF(ICOD.EQ.'C1P') C1P(ISV)= BIAS
-        IF(ICOD.EQ.'C1X') C1X(ISV)= BIAS
-        IF(ICOD.EQ.'C2C') C2C(ISV)= BIAS
-        IF(ICOD.EQ.'C2P') C2P(ISV)= BIAS
-        IF(ICOD.EQ.'C2S') C2S(ISV)= BIAS
-        IF(ICOD.EQ.'C5Q') C5Q(ISV)= BIAS
-        IF(ICOD.EQ.'C5X') C5X(ISV)= BIAS
-        IF(ICOD.EQ.'L5Q') L5Q(ISV)= BIAS
+c 2020May12 : new code bias general input
+c       IF(ICOD.EQ.'C1W') C1W(ISV)= BIAS
+c       IF(ICOD.EQ.'C2W') C2W(ISV)= BIAS
+c       IF(ICOD.EQ.'L1W') L1W(ISV)= BIAS
+c       IF(ICOD.EQ.'L1C') L1C(ISV)= BIAS
+c       IF(ICOD.EQ.'L2W') L2W(ISV)= BIAS
+c       IF(ICOD.EQ.'C1C') C1C(ISV)= BIAS
+c       IF(ICOD.EQ.'C1P') C1P(ISV)= BIAS
+c       IF(ICOD.EQ.'C1X') C1X(ISV)= BIAS
+c       IF(ICOD.EQ.'C2C') C2C(ISV)= BIAS
+c       IF(ICOD.EQ.'C2P') C2P(ISV)= BIAS
+c       IF(ICOD.EQ.'C2S') C2S(ISV)= BIAS
+c       IF(ICOD.EQ.'C5Q') C5Q(ISV)= BIAS
+c       IF(ICOD.EQ.'C5X') C5X(ISV)= BIAS
+c       IF(ICOD.EQ.'L5Q') L5Q(ISV)= BIAS
+c
+c        IF(IFREQ.EQ.7) THEN
+c         IF(ICOD.EQ.'C7Q') C5Q(ISV)= BIAS
+c         IF(ICOD.EQ.'C7X') C5X(ISV)= BIAS
+c         IF(ICOD.EQ.'L7Q') L5Q(ISV)= BIAS
+c        ENDIF
+c
+c        IF(IFREQ.EQ.8) THEN
+c         IF(ICOD.EQ.'C8Q') C5Q(ISV)= BIAS
+c         IF(ICOD.EQ.'C8X') C5X(ISV)= BIAS
+c         IF(ICOD.EQ.'L8Q') L5Q(ISV)= BIAS
+c        ENDIF
+        IF(ICOD.EQ.'C1W') C1W(ISV,1)= BIAS
+        IF(ICOD.EQ.'C2W') C2W(ISV,1)= BIAS
+        IF(ICOD.EQ.'L1W') L1W(ISV,1)= BIAS
+        IF(ICOD.EQ.'L1C') L1C(ISV,1)= BIAS
+        IF(ICOD.EQ.'L2W') L2W(ISV,1)= BIAS
+        IF(ICOD.EQ.'C1C') C1C(ISV,1)= BIAS
+        IF(ICOD.EQ.'C1P') C1P(ISV,1)= BIAS
+        IF(ICOD.EQ.'C1X') C1X(ISV,1)= BIAS
+        IF(ICOD.EQ.'C2C') C2C(ISV,1)= BIAS
+        IF(ICOD.EQ.'C2P') C2P(ISV,1)= BIAS
+        IF(ICOD.EQ.'C2S') C2S(ISV,1)= BIAS
+        IF(ICOD.EQ.'C5Q') C5Q(ISV,1)= BIAS
+        IF(ICOD.EQ.'C5X') C5X(ISV,1)= BIAS
+        IF(ICOD.EQ.'L5Q') L5Q(ISV,1)= BIAS
+C
+        IF(ICOD.EQ.'C1W') C1W(ISV,2)= SBIAS
+        IF(ICOD.EQ.'C2W') C2W(ISV,2)= SBIAS
+        IF(ICOD.EQ.'L1W') L1W(ISV,2)= SBIAS
+        IF(ICOD.EQ.'L1C') L1C(ISV,2)= SBIAS
+        IF(ICOD.EQ.'L2W') L2W(ISV,2)= SBIAS
+        IF(ICOD.EQ.'C1C') C1C(ISV,2)= SBIAS
+        IF(ICOD.EQ.'C1P') C1P(ISV,2)= SBIAS
+        IF(ICOD.EQ.'C1X') C1X(ISV,2)= SBIAS
+        IF(ICOD.EQ.'C2C') C2C(ISV,2)= SBIAS
+        IF(ICOD.EQ.'C2P') C2P(ISV,2)= SBIAS
+        IF(ICOD.EQ.'C2S') C2S(ISV,2)= SBIAS
+        IF(ICOD.EQ.'C5Q') C5Q(ISV,2)= SBIAS
+        IF(ICOD.EQ.'C5X') C5X(ISV,2)= SBIAS
+        IF(ICOD.EQ.'L5Q') L5Q(ISV,2)= SBIAS
 C
          IF(IFREQ.EQ.7) THEN
-          IF(ICOD.EQ.'C7Q') C5Q(ISV)= BIAS
-          IF(ICOD.EQ.'C7X') C5X(ISV)= BIAS
-          IF(ICOD.EQ.'L7Q') L5Q(ISV)= BIAS
+          IF(ICOD.EQ.'C7Q') C5Q(ISV,1)= BIAS
+          IF(ICOD.EQ.'C7X') C5X(ISV,1)= BIAS
+          IF(ICOD.EQ.'L7Q') L5Q(ISV,1)= BIAS
+C
+          IF(ICOD.EQ.'C7Q') C5Q(ISV,2)= SBIAS
+          IF(ICOD.EQ.'C7X') C5X(ISV,2)= SBIAS
+          IF(ICOD.EQ.'L7Q') L5Q(ISV,2)= SBIAS
          ENDIF
 C
          IF(IFREQ.EQ.8) THEN
-          IF(ICOD.EQ.'C8Q') C5Q(ISV)= BIAS
-          IF(ICOD.EQ.'C8X') C5X(ISV)= BIAS
-          IF(ICOD.EQ.'L8Q') L5Q(ISV)= BIAS
+          IF(ICOD.EQ.'C8Q') C5Q(ISV,1)= BIAS
+          IF(ICOD.EQ.'C8X') C5X(ISV,1)= BIAS
+          IF(ICOD.EQ.'L8Q') L5Q(ISV,1)= BIAS
+C
+          IF(ICOD.EQ.'C8Q') C5Q(ISV,2)= SBIAS
+          IF(ICOD.EQ.'C8X') C5X(ISV,2)= SBIAS
+          IF(ICOD.EQ.'L8Q') L5Q(ISV,2)= SBIAS
          ENDIF
+c 2020May12 : new code bias general input
        ENDIF
       ENDIF
       ENDIF
       GO TO 30
 C COMPUTE DCB's & WSB's , NSB's
 60    CONTINUE
+c 2020May12 : new code bias general input
+      IEND=1
+      ICDBIAS=0
+      IPHBIAS=0
+c 2020May12 : new code bias general input
       DO I=1, 160
 C GET GNSS FREQs
        IF(I.EQ.1.OR.I.EQ.33.OR.I.EQ.65.OR.I.EQ.101)
@@ -33727,41 +34034,110 @@ C GET GNSS FREQs
        IF(IPRN.NE. 0) THEN
 C GPS      ** WARNING*** C1W,C2W may be zeros in some bia files !
         IF(IPRN.LE.32) THEN
-         IF(C1W(IPRN)*C2W(IPRN).NE.0.D0) DP1P2(IPRN)=C1W(IPRN)-C2W(IPRN)
-         IF(C1C(IPRN).NE.0.D0) DP1C1(IPRN)=C1W(IPRN)-C1C(IPRN)
-         IF(C2C(IPRN).NE.0.D0) DP2C2(IPRN)=C2W(IPRN)-C2C(IPRN)
-         IF(L1W(IPRN)*L2W(IPRN).NE.0.D0 ) THEN
+c 2020May12 : new code bias general input
+c        IF(C1W(IPRN)*C2W(IPRN).NE.0.D0) DP1P2(IPRN)=C1W(IPRN)-C2W(IPRN)
+c        IF(C1C(IPRN).NE.0.D0) DP1C1(IPRN)=C1W(IPRN)-C1C(IPRN)
+c        IF(C2C(IPRN).NE.0.D0) DP2C2(IPRN)=C2W(IPRN)-C2C(IPRN)
+c        IF(L1W(IPRN)*L2W(IPRN).NE.0.D0 ) THEN
+c WL(M)
+c         PRDC(9,IPRN)=-1.D-9*(L1W(IPRN)*F1-L2W(IPRN)*F2-(C1W(IPRN)*F1
+c    &                 +C2W(IPRN)*F2)*(F1-F2)/(F1+F2))*AL4
+c NL(M)
+c         PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN)*F2ION-L2W(IPRN)*F1ION)         
+         IF(C1W(IPRN,2)+C2W(IPRN,2).GE.0.D0.OR.
+     &      C1W(IPRN,2)+C1C(IPRN,2).GE.0.D0.OR.
+     &      C2W(IPRN,2)+C2C(IPRN,2).GE.0.D0) THEN
+          ICDBIAS=1
+          IF(C1W(IPRN,2)+C2W(IPRN,2).GE.0.D0.AND.
+     &       DABS(C1W(IPRN,1)-C2W(IPRN,1)).GT.1.D-5)
+     &     DP1P2(IPRN)=C1W(IPRN,1)-C2W(IPRN,1)
+          IF(C1W(IPRN,2)+C1C(IPRN,2).GE.0.D0)
+     &     DP1C1(IPRN)=C1W(IPRN,1)-C1C(IPRN,1)
+          IF(C2W(IPRN,2)+C2C(IPRN,2).GE.0.D0)
+     &     DP2C2(IPRN)=C2W(IPRN,1)-C2C(IPRN,1)
+         ENDIF
+         IF(L1W(IPRN,2)+L2W(IPRN,2).GE.0.D0 ) THEN
+          IPHBIAS=1
 C WL(M)
-          PRDC(9,IPRN)=-1.D-9*(L1W(IPRN)*F1-L2W(IPRN)*F2-(C1W(IPRN)*F1
-     &                 +C2W(IPRN)*F2)*(F1-F2)/(F1+F2))*AL4
+          PRDC(9,IPRN)=-1.D-9*(L1W(IPRN,1)*F1-L2W(IPRN,1)*F2
+     &                 -(C1W(IPRN,1)*F1
+     &                 +C2W(IPRN,1)*F2)*(F1-F2)/(F1+F2))*AL4
 C NL(M)
-          PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN)*F2ION-L2W(IPRN)*F1ION)         
+          PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN,1)*F2ION
+     &                               -L2W(IPRN,1)*F1ION)         
+c 2020May12 : new code bias general input
          ENDIF
         ENDIF
 C GLONASS
         IF(IPRN.GT.32.AND.IPRN.LE.64) THEN
-         IF(C1P(IPRN)*C2P(IPRN).NE.0.D0) DP1P2(IPRN)=C1P(IPRN)-C2P(IPRN)
-         IF(C1P(IPRN)*C1C(IPRN).NE.0.D0) DP1C1(IPRN)=C1P(IPRN)-C1C(IPRN)
-         IF(C2P(IPRN)*C2C(IPRN).NE.0.D0) DP2C2(IPRN)=C2P(IPRN)-C2C(IPRN)
-         IF(L1W(IPRN)*L2W(IPRN).NE.0.D0) THEN
+c 2020May12 : new code bias general input
+c        IF(C1P(IPRN)*C2P(IPRN).NE.0.D0) DP1P2(IPRN)=C1P(IPRN)-C2P(IPRN)
+c        IF(C1P(IPRN)*C1C(IPRN).NE.0.D0) DP1C1(IPRN)=C1P(IPRN)-C1C(IPRN)
+c        IF(C2P(IPRN)*C2C(IPRN).NE.0.D0) DP2C2(IPRN)=C2P(IPRN)-C2C(IPRN)
+c        IF(L1W(IPRN)*L2W(IPRN).NE.0.D0) THEN
+c WL (M)
+c         PRDC(9,IPRN)=-1.D-9*(L1W(IPRN)*F1-L2W(IPRN)*F2-(C1P(IPRN)*F1
+c    &                 +C2P(IPRN)*F2)*(F1-F2)/(F1+F2)) *AL4
+c NL (M)
+c         PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN)*F2ION-L2W(IPRN)*F1ION)         
+         IF(C1P(IPRN,2)+C2P(IPRN,2).GE.0.D0.OR.
+     &      C1P(IPRN,2)+C1C(IPRN,2).GE.0.D0.OR.
+     &      C2P(IPRN,2)+C2C(IPRN,2).GE.0.D0) THEN
+          ICDBIAS=1
+          IF(C1P(IPRN,2)+C2P(IPRN,2).GE.0.D0.AND.
+     &       DABS(C1P(IPRN,1)-C2P(IPRN,1)).GT.1.D-5)
+     &     DP1P2(IPRN)=C1P(IPRN,1)-C2P(IPRN,1)
+          IF(C1P(IPRN,2)+C1C(IPRN,2).GE.0.D0)
+     &     DP1C1(IPRN)=C1P(IPRN,1)-C1C(IPRN,1)
+          IF(C2P(IPRN,2)+C2C(IPRN,2).GE.0.D0)
+     &     DP2C2(IPRN)=C2P(IPRN,1)-C2C(IPRN,1)
+         ENDIF
+         IF(L1W(IPRN,2)+L2W(IPRN,2).GE.0.D0) THEN
+          IPHBIAS=1
 C WL (M)
-          PRDC(9,IPRN)=-1.D-9*(L1W(IPRN)*F1-L2W(IPRN)*F2-(C1P(IPRN)*F1
-     &                 +C2P(IPRN)*F2)*(F1-F2)/(F1+F2)) *AL4
+          PRDC(9,IPRN)=-1.D-9*(L1W(IPRN,1)*F1-L2W(IPRN,1)*F2
+     &                 -(C1P(IPRN,1)*F1
+     &                 +C2P(IPRN,1)*F2)*(F1-F2)/(F1+F2)) *AL4
 C NL (M)
-          PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN)*F2ION-L2W(IPRN)*F1ION)         
+          PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN,1)*F2ION
+     &                               -L2W(IPRN,1)*F1ION)         
+c 2020May12 : new code bias general input
          ENDIF
         ENDIF
 C GALILEO  ** WARNING*** C1C,C5Q may be zeros in some bia files !
         IF(IPRN.GT.64.AND.IPRN.LE.100) THEN
-         IF(C1C(IPRN)*C5Q(IPRN).NE.0.D0) DP1P2(IPRN)=C1C(IPRN)-C5Q(IPRN)
-         IF(C1X(IPRN).NE.0.D0) DP1C1(IPRN)=C1C(IPRN)-C1X(IPRN)
-         IF(C5X(IPRN).NE.0.D0) DP2C2(IPRN)=C5Q(IPRN)-C5X(IPRN)
-         IF(L1C(IPRN)*L5Q(IPRN).NE.0.D0) THEN
+c 2020May12 : new code bias general input
+c        IF(C1C(IPRN)*C5Q(IPRN).NE.0.D0) DP1P2(IPRN)=C1C(IPRN)-C5Q(IPRN)
+c        IF(C1X(IPRN).NE.0.D0) DP1C1(IPRN)=C1C(IPRN)-C1X(IPRN)
+c        IF(C5X(IPRN).NE.0.D0) DP2C2(IPRN)=C5Q(IPRN)-C5X(IPRN)
+c        IF(L1C(IPRN)*L5Q(IPRN).NE.0.D0) THEN
+c WL(M)
+c         PRDC(9,IPRN)=-1.D-9*(L1C(IPRN)*F1-L5Q(IPRN)*F2-(C1C(IPRN)*F1
+c    &                 +C5Q(IPRN)*F2)*(F1-F2)/(F1+F2)) *AL4
+c NL(M)
+c         PRDC(10,IPRN)=-0.299792D0*(L1C(IPRN)*F2ION-L5Q(IPRN)*F1ION)         
+         IF(C1C(IPRN,2)+C5Q(IPRN,2).GE.0.D0.OR.
+     &      C1X(IPRN,2)+C1C(IPRN,2).GE.0.D0.OR.
+     &      C5X(IPRN,2)+C5Q(IPRN,2).GE.0.D0) THEN
+          ICDBIAS=1
+          IF(C1C(IPRN,2)+C5Q(IPRN,2).GE.0.D0.AND.
+     &       DABS(C1C(IPRN,1)-C5Q(IPRN,1)).GT.1.D-5)
+     &     DP1P2(IPRN)=C1C(IPRN,1)-C5Q(IPRN,1)
+          IF(C1X(IPRN,2)+C1C(IPRN,2).GE.0.D0)
+     &     DP1C1(IPRN)=C1C(IPRN,1)-C1X(IPRN,1)
+          IF(C5X(IPRN,2)+C5Q(IPRN,2).GE.0.D0)
+     &     DP2C2(IPRN)=C5Q(IPRN,1)-C5X(IPRN,1)
+         ENDIF
+         IF(L1C(IPRN,2)+L5Q(IPRN,2).GE.0.D0) THEN
+          IPHBIAS=1
+c 2020May12 : new code bias general input
 C WL(M)
-          PRDC(9,IPRN)=-1.D-9*(L1C(IPRN)*F1-L5Q(IPRN)*F2-(C1C(IPRN)*F1
-     &                 +C5Q(IPRN)*F2)*(F1-F2)/(F1+F2)) *AL4
+          PRDC(9,IPRN)=-1.D-9*(L1C(IPRN,1)*F1-L5Q(IPRN,1)*F2
+     &                 -(C1C(IPRN,1)*F1
+     &                 +C5Q(IPRN,1)*F2)*(F1-F2)/(F1+F2)) *AL4
 C NL(M)
-          PRDC(10,IPRN)=-0.299792D0*(L1C(IPRN)*F2ION-L5Q(IPRN)*F1ION)         
+          PRDC(10,IPRN)=-0.299792D0*(L1C(IPRN,1)*F2ION
+     &                               -L5Q(IPRN,1)*F1ION)         
          ENDIF
         ENDIF
 C
@@ -33772,6 +34148,9 @@ C
       ENDDO
       GO TO 10
 20    write(*,*) 'READ ERROR IN BIA FILE! ' , NAMBIA
+c 2020May12 : new code bias general input
+      IERR=2
+c 2020May12 : new code bias general input
 10    CLOSE(LU)
 50    RETURN
       END
