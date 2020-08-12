@@ -682,7 +682,7 @@ C
 C     VERSION NUMBER
       DATA IVERSION/120/
 C     RELEASE NUMBER (day of year,last two-digits of year)
-      DATA IRLEASE/10720/
+      DATA IRLEASE/22420/
       DATA NFIXR / 0/
       DATA INTCLK / 900/
       DATA ITER / 0/
@@ -9825,6 +9825,9 @@ C
       CHARACTER*2   PRNID
       CHARACTER*2   CLKTYP
       CHARACTER*4   CLKNAM
+c 2020Aug11 : rinex_clock 3.04 format
+      INTEGER*4 RNXIDX
+c 2020Aug11 : rinex_clock 3.04 format
       INTEGER*4 ID,IOS,ICLKFMT,IYEAR,IMTH,IDAY,IHR,IMIN
       INTEGER*4 NECLK,IEPRN,JULD,IGPSWK,IWKDAY,IGPSWKF
       INTEGER*4 LTTAG,NDTTAG,IODE,IPRN,ITTAG
@@ -9892,10 +9895,22 @@ c Lahaye : 2020Feb26 : general handling of WL records until END OF HEADER
           ENDIF
 C Feb 25, 2020
           CLKRMS=0.D0
-          READ(RECORD,1050,ERR=1051)
-     &                      CLKTYP,CLKNAM,IYEAR,IMTH,IDAY,IHR,IMIN, 
+c 2020Aug11 : rinex_clock 3.04 format
+          IF(ICLKFMT.EQ.0) THEN
+           RNXIDX=9
+          ELSE
+           RNXIDX=14
+          END IF
+c         READ(RECORD,1050,ERR=1051)
+c    &                      CLKTYP,CLKNAM,IYEAR,IMTH,IDAY,IHR,IMIN, 
+c    &                      SEC, NECLK, CLKEST, CLKRMS
+c    &                     , PSB, PSBRMS, WSB, WSBRMS
+          READ(RECORD,1050,ERR=1051,END=1051) CLKTYP,CLKNAM
+          READ(RECORD(RNXIDX:240),*,ERR=1051,END=1051)
+     &                      IYEAR,IMTH,IDAY,IHR,IMIN, 
      &                      SEC, NECLK, CLKEST, CLKRMS
      &                     , PSB, PSBRMS, WSB, WSBRMS
+c 2020Aug11 : rinex_clock 3.04 format
 1051      CONTINUE
         END IF
 C
@@ -9942,10 +9957,17 @@ C
      &    .AND.RECORD(1:4).NE.'AS E'.AND.RECORD(1:4).NE.'AS C') GO TO 50
 C Feb 25, 2020
           CLKRMS=0.D0
-          READ(RECORD,1050,ERR=1052)
-     &                     CLKTYP,CLKNAM,IYEAR,IMTH,IDAY,IHR,IMIN, 
-     &                     SEC,NECLK,CLKEST,CLKRMS
+c 2020Aug11 : rinex_clock 3.04 format
+c         READ(RECORD,1050,ERR=1052)
+c    &                     CLKTYP,CLKNAM,IYEAR,IMTH,IDAY,IHR,IMIN, 
+c    &                     SEC,NECLK,CLKEST,CLKRMS
+c    &                     , PSB, PSBRMS, WSB, WSBRMS
+          READ(RECORD,1050,ERR=1052,END=1052) CLKTYP,CLKNAM
+          READ(RECORD(RNXIDX:240),*,ERR=1052,END=1052)
+     &                      IYEAR,IMTH,IDAY,IHR,IMIN, 
+     &                      SEC, NECLK, CLKEST, CLKRMS
      &                     , PSB, PSBRMS, WSB, WSBRMS
+c 2020Aug11 : rinex_clock 3.04 format
 1052      CONTINUE
           READ(CLKNAM,'(1X,I2.2)') IEPRN
           IF(CLKNAM(1:1).EQ.'R') IEPRN=IEPRN+32
@@ -10047,7 +10069,10 @@ C     FORMAT STATEMENTS
 C 
   190 FORMAT(I12,10I10)
  1000 FORMAT (9X,I2.2,1X,I4,1X,4(I2.2,1X),F8.4,1X,I6,1X,2F15.12,3F10.3)
- 1050 FORMAT (A2,1X,A4,1X,I4,4I3,F10.6,I3,2X,6(1X,E19.12))
+c 2020Aug11 : rinex_clock 3.04 format
+c1050 FORMAT (A2,1X,A4,1X,I4,4I3,F10.6,I3,2X,6(1X,E19.12))
+ 1050 FORMAT (A2,1X,A4)
+c 2020Aug11 : rinex_clock 3.04 format
  1101 FORMAT(9X,I2.2,1X,I4,1X,4(I2.2,1X),F8.4,2F17.13,10X,4F9.4,1X,Z2)
       END
 C2345678901234567890123456789012345678901234567890123456789012345678901234567890
@@ -10268,7 +10293,10 @@ C
       CHARACTER*2 CLKTYP
       CHARACTER*4 CLKNAM
 c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
-      CHARACTER*80 RECORD
+c 2020Aug11 : rinex_clock 3.04 format
+c     CHARACTER*80 RECORD
+      CHARACTER*85 RECORD
+c 2020Aug11 : rinex_clock 3.04 format
 c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
 C
       IDATEC=0
@@ -10306,7 +10334,10 @@ C
      &          ERR=185 )
         CALL HDCLX ( LUCLK, INTCLK, ICLKFMT )
         IF (ICLKFMT .EQ. -1) STOP 'CLK FORMAT NOT RECOGNIZED'
-        IF (ICLKFMT .EQ. 1.OR.ICLKFMT .EQ. 5) THEN
+c 2020Aug11 : rinex_clock 3.04 format
+c       IF (ICLKFMT .EQ. 1.OR.ICLKFMT .EQ. 5) THEN
+        IF (ICLKFMT .LE. 1.OR.ICLKFMT .EQ. 5) THEN
+c 2020Aug11 : rinex_clock 3.04 format
          IF (ICLKFMT .EQ. 5) THEN
           READ(LUCLK,'(12X,I4,4I3,F9.4,2F17.13)',
      &    ERR=190)
@@ -10318,8 +10349,16 @@ c         READ(LUCLK,'(A2,1X,A4,1X,I4,4I3,F10.6,I3,2X,2(1X,E19.12))',
 c    &    ERR=190)
 c    &    CLKTYP, CLKNAM, IYCOR, IMCOR, IDCOR, IHRCOR, IMINCOR, 
 c    &    SECCOR, NECLK, CLKOS, CLKSD
-          READ(LUCLK,'(A80)', ERR=190) RECORD
-          READ(RECORD(8:80),*, ERR=190) IYCOR, IMCOR, IDCOR
+c 2020Aug11 : rinex_clock 3.04 format
+c         READ(LUCLK,'(A80)', ERR=190) RECORD
+c         READ(RECORD(8:80),*, ERR=190) IYCOR, IMCOR, IDCOR
+          READ(LUCLK,'(A85)', ERR=190) RECORD
+          IF(ICLKFMT.EQ.0.OR.RECORD(1:3).EQ.'WL ') THEN
+           READ(RECORD(8:85),*, ERR=190) IYCOR, IMCOR, IDCOR
+          ELSE
+           READ(RECORD(14:85),*, ERR=190) IYCOR, IMCOR, IDCOR
+          END IF
+c 2020Aug11 : rinex_clock 3.04 format
 c Lahaye : 2020Feb26 : problem reading this when HDCLX stops at WIDELANE
          END IF
 C
@@ -14618,18 +14657,30 @@ C
       INTEGER*4    IT
       CHARACTER*64 HEX
       CHARACTER*1  FTYPE
-      CHARACTER*80 RECORD
-      CHARACTER*60 COMMENT
-      CHARACTER*55 ACNAM
-      CHARACTER*50 ITRF
+c 2020Aug11 : rinex_clock 3.04 format
+c     CHARACTER*80 RECORD
+c     CHARACTER*60 COMMENT
+c     CHARACTER*55 ACNAM
+c     CHARACTER*50 ITRF
+      CHARACTER*85 RECORD
+      CHARACTER*65 COMMENT
+      CHARACTER*60 ACNAM
+      CHARACTER*55 ITRF
+c 2020Aug11 : rinex_clock 3.04 format
       CHARACTER*20 LABEL
       CHARACTER*20 PGM
       CHARACTER*20 RUNBY
-      CHARACTER*20 CDATE
+c 2020Aug11 : rinex_clock 3.04 format
+c     CHARACTER*20 CDATE
+      CHARACTER*21 CDATE
+c 2020Aug11 : rinex_clock 3.04 format
       CHARACTER*20 REFDOM, STADOM
       CHARACTER*2  CLKT(5)
       CHARACTER*3  AC
       CHARACTER*4  REFNAM, STANAM
+c 2020Aug11 : rinex_clock 3.04 format
+      INTEGER*4 RNXIDX
+c 2020Aug11 : rinex_clock 3.04 format
       INTEGER*4 SIZE
       INTEGER*4 I,NCLKT,NCLKRF,ISYRRF,ISMTHRF,ISDAYRF,ISHRRF,ISMINRF
       INTEGER*4 IEYRRF,IEMTHRF,IEDAYRF,IEHRRF,IEMINRF,NSTACLK,IEOF
@@ -14646,8 +14697,11 @@ C------------------------------------------------------------------------
 C     READ HEADER RECORD FROM RINEX CLOCK FORMAT
 C------------------------------------------------------------------------
 C
-  100 CONTINUE
-      READ(LUCLX,'(A80)',END=500) RECORD
+c 2020Aug11 : rinex_clock 3.04 format
+c 100 CONTINUE
+c     READ(LUCLX,'(A80)',END=500) RECORD
+      READ(LUCLX,'(A85)',END=500) RECORD
+c 2020Aug11 : rinex_clock 3.04 format
       IF( RECORD(1:5) .EQ. 'c sat' .OR.
      &    RECORD(1:5) .EQ. 'c sat' ) THEN
        IFMT=5
@@ -14697,7 +14751,25 @@ C
       RETURN
 115   CONTINUE
       TRYRTCM=.FALSE.
-      LABEL = RECORD(61:80)
+c 2020Aug11 : rinex_clock 3.04 format
+C FIRST RECORD SHOULD CONTAIN SPECIFIED CONTENT IN POSITION 61 OR 66
+C ELSE RINEX CLK IS NOT RECOGNIZED
+      RNXIDX=INDEX(RECORD,'RINEX VERSION / TYPE')
+      IF( RNXIDX .NE. 61 .AND. RNXIDX .NE. 66 ) GO TO 200
+      LBLFOUND=.TRUE.
+      IF( RNXIDX .EQ. 61 ) THEN
+        READ(RECORD,'(F9.2,11X,A1,39X)') VERSION,FTYPE
+      ELSE
+        READ(RECORD,'(F4.2,17X,A1,43X)') VERSION,FTYPE
+      END IF
+      IF( RNXIDX .EQ. 61 .AND. VERSION .GE. 3.04 ) GO TO 200
+      IF( RNXIDX .EQ. 66 .AND. VERSION .LT. 3.04 ) GO TO 200
+c 2020Aug11 : rinex_clock 3.04 format
+  100 CONTINUE
+c 2020Aug11 : rinex_clock 3.04 format
+      LABEL = RECORD(RNXIDX:RNXIDX+19)
+c     LABEL = RECORD(61:80)
+c 2020Aug11 : rinex_clock 3.04 format
 C
 C     BLANK LINE IS END OF HEADER
 C
@@ -14710,23 +14782,41 @@ C
 C
 C     EXTRACT RINEX FORMAT VERSION AND DATA TYPE
 C
-      IF ( LABEL .EQ. 'RINEX VERSION / TYPE' ) THEN
-        LBLFOUND=.TRUE.
-        READ(RECORD,'(F9.2,11X,A1,39X)') VERSION,FTYPE
-      END IF
+c 2020Aug11 : rinex_clock 3.04 format
+c     IF ( LABEL .EQ. 'RINEX VERSION / TYPE' ) THEN
+c       LBLFOUND=.TRUE.
+c       READ(RECORD,'(F9.2,11X,A1,39X)') VERSION,FTYPE
+c     END IF
+c 2020Aug11 : rinex_clock 3.04 format
 C
 C     EXTRACT PROGRAM, AGENCY AND FILE CREATION DATE
 C
       IF ( LABEL .EQ. 'PGM / RUN BY / DATE' ) THEN
         LBLFOUND=.TRUE.
+c 2020Aug11 : rinex_clock 3.04 format
+        IF( RNXIDX .EQ. 61 ) THEN
+c 2020Aug11 : rinex_clock 3.04 format
         READ(RECORD,'(3A20)') PGM,RUNBY,CDATE
+c 2020Aug11 : rinex_clock 3.04 format
+        ELSE
+        READ(RECORD,'(A19,2X,A19,2X,A21,2X)') PGM,RUNBY,CDATE
+        END IF
+c 2020Aug11 : rinex_clock 3.04 format
       END IF
 C
 C     EXTRACT COMMENTS
 C
       IF ( LABEL .EQ. 'COMMENT            ' ) THEN
         LBLFOUND=.TRUE.
+c 2020Aug11 : rinex_clock 3.04 format
+        IF( RNXIDX .EQ. 61 ) THEN
+c 2020Aug11 : rinex_clock 3.04 format
         READ(RECORD,'(A60)') COMMENT
+c 2020Aug11 : rinex_clock 3.04 format
+        ELSE
+        READ(RECORD,'(A65)') COMMENT
+        END IF
+c 2020Aug11 : rinex_clock 3.04 format
       END IF
 C
 C     EXTRACT NUMBER AND TYPES OF DATA
@@ -14734,7 +14824,7 @@ C
       IF ( LABEL .EQ. '# / TYPES OF DATA  ' ) THEN
         LBLFOUND=.TRUE.
         READ(RECORD,'(I6,5(4X,A2))') NCLKT
-      IF ( NCLKT .GT. 0 .AND. NCLKT .LE. 5 )
+        IF ( NCLKT .GT. 0 .AND. NCLKT .LE. 5 )
      &    READ(RECORD,'(6X,5(4X,A2))') (CLKT(I), I=1,NCLKT)
       END IF
 C
@@ -14742,41 +14832,98 @@ C     EXTRACT ANALYSIS CENTER CODE AND NAME
 C
       IF ( LABEL .EQ. 'ANALYSIS CENTER    ' ) THEN
         LBLFOUND=.TRUE.
+c 2020Aug11 : rinex_clock 3.04 format
+        IF( RNXIDX .EQ. 61 ) THEN
+c 2020Aug11 : rinex_clock 3.04 format
         READ(RECORD,'(A3,2X,A55)') AC,ACNAM
+c 2020Aug11 : rinex_clock 3.04 format
+        ELSE
+        READ(RECORD,'(A3,2X,A60)') AC,ACNAM
+        END IF
+c 2020Aug11 : rinex_clock 3.04 format
       END IF
 C
 C     EXTRACT NUMBER OF CLOCK REFERENCES AND START/END TIMES
 C
       IF ( LABEL .EQ. '# OF CLK REF       ' ) THEN
         LBLFOUND=.TRUE.
+c 2020Aug11 : rinex_clock 3.04 format
+        IF( RNXIDX .EQ. 61 ) THEN
+c 2020Aug11 : rinex_clock 3.04 format
         READ(RECORD,'(I6,2(1X,I4,4(I3),F10.6))') NCLKRF, 
      &       ISYRRF, ISMTHRF, ISDAYRF, ISHRRF, ISMINRF, SSECRF,
      &       IEYRRF, IEMTHRF, IEDAYRF, IEHRRF, IEMINRF, ESECRF
+c 2020Aug11 : rinex_clock 3.04 format
+        ELSE
+        READ(RECORD,'(I6,1X,2(I4,1X,4(I2,1X),F10.6,2X))') NCLKRF, 
+     &       ISYRRF, ISMTHRF, ISDAYRF, ISHRRF, ISMINRF, SSECRF,
+     &       IEYRRF, IEMTHRF, IEDAYRF, IEHRRF, IEMINRF, ESECRF
+        END IF
+c 2020Aug11 : rinex_clock 3.04 format
       END IF
 C
 C     EXTRACT REFERENCE CLOCK NAMES AND CONSTRAINTS
 C
       IF ( LABEL .EQ. 'ANALYSIS CLK REF   ' ) THEN
         LBLFOUND=.TRUE.
+c 2020Aug11 : rinex_clock 3.04 format
+        IF( RNXIDX .EQ. 61 ) THEN
+c 2020Aug11 : rinex_clock 3.04 format
         READ(RECORD,'(A4,1X,A20,15X,E19.12,1X)') REFNAM, REFDOM,REFSD 
+c 2020Aug11 : rinex_clock 3.04 format
+        ELSE
+        READ(RECORD,'(A4,6X,A20,15X,E19.12,1X)') REFNAM, REFDOM,REFSD 
+        END IF
+c 2020Aug11 : rinex_clock 3.04 format
       END IF
 C
 C     EXTRACT NUMBER OF STATION CLOCKS SOLVED AND REFERENCE FRAME
 C
       IF ( LABEL .EQ. '# OF SOLN STA / TRF' ) THEN
         LBLFOUND=.TRUE.
+c 2020Aug11 : rinex_clock 3.04 format
+        IF( RNXIDX .EQ. 61 ) THEN
+c 2020Aug11 : rinex_clock 3.04 format
         READ(RECORD,'(I6,4X,A50)') NSTACLK, ITRF 
+c 2020Aug11 : rinex_clock 3.04 format
+        ELSE
+        READ(RECORD,'(I6,4X,A55)') NSTACLK, ITRF 
+        END IF
+c 2020Aug11 : rinex_clock 3.04 format
       END IF
 C
 C     EXTRACT STATION NAMES AND COORDINATES
 C
       IF ( LABEL .EQ. 'SOLN STA NAME / NUM' ) THEN
         LBLFOUND=.TRUE.
+c 2020Aug11 : rinex_clock 3.04 format
+        IF( RNXIDX .EQ. 61 ) THEN
+c 2020Aug11 : rinex_clock 3.04 format
         READ(RECORD,'(A4,1X,A20)') STANAM, STADOM
+c 2020Aug11 : rinex_clock 3.04 format
+        ELSE
+        READ(RECORD,'(A4,6X,A20)') STANAM, STADOM
+        END IF
+c 2020Aug11 : rinex_clock 3.04 format
       END IF
-      IF (LBLFOUND) GO TO 100
+c 2020Aug11 : rinex_clock 3.04 format
+c     IF (LBLFOUND) GO TO 100
+      IF (LBLFOUND) THEN
+       READ(LUCLX,'(A85)',END=500) RECORD
+       GO TO 100
+      ENDIF
+c 2020Aug11 : rinex_clock 3.04 format
   200 CONTINUE
-      IF (LBLFOUND) IFMT=1
+c 2020Aug11 : rinex_clock 3.04 format
+c     IF (LBLFOUND) IFMT=1
+      IF (LBLFOUND) THEN
+       IF( RNXIDX .EQ. 61 ) THEN
+        IFMT=0
+       ELSE
+        IFMT=1
+       END IF
+      END IF
+c 2020Aug11 : rinex_clock 3.04 format
       RETURN
 C
   500 CONTINUE
@@ -15071,14 +15218,20 @@ c!        write(*,*) record
      &                            FJULD
          IPEPINT=IDNINT(PEPINT)
        READ(LUPEP,1200,END=900) IDLIN, NPEPSV, (G(I),IDSV(I),I=1,17)
-       DO J=1,40
+c 2020Jul27: up to 59 (=ceil(999/17)) SVid records in SP3d
+c      DO J=1,40
+       DO J=1,58
+c 2020Jul27: up to 59 (=ceil(999/17)) SV records in SP3d
        READ(LUPEP,'(A60)',END=900) RECORD
        IF(RECORD(1:2).EQ.'++') GO TO 10
        READ(RECORD,1210,END=900) (G(I),IDSV(I),I=J*17+1,(J+1)*17)
        END DO
 C
 10     READ(RECORD,1300,END=900) (IESV(I),I=1,17 )
-       DO J=1,40
+c 2020Jul27: up to 59 (=ceil(999/17)) SVacc records in SP3d
+c      DO J=1,40
+       DO J=1,58
+c 2020Jul27: up to 59 (=ceil(999/17)) SVacc records in SP3d
        READ(LUPEP,'(A60)',END=900) RECORD
        IF(RECORD(1:2).EQ.'%c') GO TO 20
        READ(RECORD,1300,END=900) (IESV(I),I=J*17+1,(J+1)*17)
@@ -15123,19 +15276,26 @@ c!        write(*,*) record
          READ(LUPEP,'(A60)',END=900) RECORD
        READ(RECORD,1600,END=900) IDLIN, INT1, INT2, INT3, INT4,
      &                            INT5, INT6, INT7, INT8
+c 2020Jul27: unlimited number of comments in SP3d format
+ 300  CONTINUE
+c 2020Jul27: unlimited number of comments in SP3d format
          READ(LUPEP,'(A60)',END=900) RECORD
 c!        write(*,*) record
-       READ(RECORD,1700,END=900) IDLIN, COMMENT
-         READ(LUPEP,'(A60)',END=900) RECORD
+c 2020Jul27: unlimited number of comments in SP3d format
+       IF( RECORD(1:2) .EQ. '/*' ) GOTO 300
+       BACKSPACE(LUPEP)
+c      READ(RECORD,1700,END=900) IDLIN, COMMENT
+c        READ(LUPEP,'(A60)',END=900) RECORD
 c!        write(*,*) record
-       READ(RECORD,1700,END=900) IDLIN, COMMENT
+c      READ(RECORD,1700,END=900) IDLIN, COMMENT
 c!        write(*,*) record
-         READ(LUPEP,'(A60)',END=900) RECORD
+c        READ(LUPEP,'(A60)',END=900) RECORD
 c!        write(*,*) record
-       READ(RECORD,1700,END=900) IDLIN, COMMENT
-         READ(LUPEP,'(A60)',END=900) RECORD
+c      READ(RECORD,1700,END=900) IDLIN, COMMENT
+c        READ(LUPEP,'(A60)',END=900) RECORD
 c!        write(*,*) record
-       READ(RECORD,1700,END=900) IDLIN, COMMENT
+c      READ(RECORD,1700,END=900) IDLIN, COMMENT
+c 2020Jul27: unlimited number of comments in SP3d format
 C
        NEWTT    = .TRUE.
        NEWPEP = .FALSE.
