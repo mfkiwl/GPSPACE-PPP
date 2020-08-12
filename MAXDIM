@@ -92,7 +92,9 @@ C     PARAMETER (MAXSAT=136)
       PARAMETER (MAXSHCOEF=153)
 C MAXARC should be multiple of MAXDAYS (at least 4*)
       PARAMETER (MAXARC=180)
-      PARAMETER (MAXHOION=19)
+C Jun 6, 2020
+c     PARAMETER (MAXHOION=19)
+      PARAMETER (MAXHOION=40)
 c Lahaye : 2019Oct19 : SV block indeces change
 c     PARAMETER (MAXBLK=32)
       PARAMETER (MAXBLK=80)

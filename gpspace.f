@@ -682,7 +682,7 @@ C
 C     VERSION NUMBER
       DATA IVERSION/120/
 C     RELEASE NUMBER (day of year,last two-digits of year)
-      DATA IRLEASE/22420/
+      DATA IRLEASE/22520/
       DATA NFIXR / 0/
       DATA INTCLK / 900/
       DATA ITER / 0/
@@ -769,12 +769,19 @@ c 2020Apr16 : day boundary AR NL jumps handling
         END DO
       END DO
       HORDION(2)=1.D02
-      HORDION(11)=1.D 0  
-      HORDION(15)=1.D 0 
+C Jun 6, 2020
+C     HORDION(11)=1.D 0  
+C     HORDION(15)=1.D 0 
+      HORDION(16)=1.D 0 
+      HORDION(22)=1.D 0 
+      HORDION(28)=1.D 0 
+      HORDION(34)=1.D 0 
 C  WL INT PHASE INIILIZATION AFTER MINFX MIN ONLY! 
       MINFX= 30     
-      HORDION(19)=1.D-3
-      HORDION(19)=1.D-8 
+C     HORDION(19)=1.D-3
+C     HORDION(19)=1.D-8 
+      HORDION(40)=1.D-8 
+C Jun 6, 2020 - end
 C Feb 23, 2019 - start  (multi GNSS AR)
 C     IPRNREF=0
        DO i=1,4
@@ -1957,7 +1964,9 @@ C THE INPUT DCB IS ONLY VALID FOR L3 PROCESSING
              DO I=1,NRXDCB
                IF( LRXDCB(I) .EQ. STNA(1:4) ) THEN
                  HORDION(1) = RXDCB(I)
-                 HORDION(11) = 1.D20
+C Jun 6, 2020
+C                HORDION(11) = 1.D20
+                 HORDION(16) = 1.D20
                END IF
              END DO
              END IF
@@ -2232,32 +2241,44 @@ c         ICSLIP(I)=1
         ENDIF
         IF(I.EQ.1.AND.HORDION(10).GT.0.D0) THEN
 C APPLY RW OF 0.05 TECU/SQRT(sec)
-           CALL SPIN ( HORDION(11),  3,  3, sinel     , J)
-           HORDION(19)= HORDION(19)+0.25D0*IDIR*(UTTAG-HORDION(10))
-           CALL SPIN ( HORDION(11),  3,  3, sinel     , J)
+C Jun 6, 2020
+C          CALL SPIN ( HORDION(11),  3,  3, sinel     , J)
+C          HORDION(19)= HORDION(19)+0.25D0*IDIR*(UTTAG-HORDION(10))
+C          CALL SPIN ( HORDION(11),  3,  3, sinel     , J)
+           CALL SPIN ( HORDION(16),  5,  5, sinel     , J)
+           HORDION(40)= HORDION(40)+0.25D0*IDIR*(UTTAG-HORDION(10))
+           CALL SPIN ( HORDION(16),  5,  5, sinel     , J)
         ENDIF
 C ACCUMULATE THE DCB/VTEC NORMALS  FOR GPS/GLONASS   
 C allow only G & R in VTEC comp (For now)
-        IF( IFLAG .EQ. 0 .AND.ISVO(I).LE.64.AND.
+C Jun 6, 2020 allow E and C, too
+C       IF( IFLAG .EQ. 0 .AND.ISVO(I).LE.64.AND.
+       IF(IFLAG.EQ.0.AND.ISVO(I).LE.160.AND.DP1P2(ISVO(I)).NE.0.0D0.AND.
      &      FLTSUM(1,ISVO(I)) .GT. 1 .AND.
      &     icslip15(ISVO(I)).eq.0.and. EL(K).GT.0.D0 ) THEN
            sinel=1.D0
-           suwpr=1.d0
+C Jun 6, 2020
+C          suwpr=1.d0
+           suwpr= 40.309D 15*(1.D0/F2S-1.D0/F1S)/0.10507D-1
            if( EL(K) .LE. 90.D0 ) then
             sinel= sqrt(DABS(sin(el(K)/57.296d0)))
 C GLONASS PR DOWN WEIGHTING BY (1/2)**2
            SUWCP= 1.D0
             IF (ISVO(I).GT.32.AND.ISVO(I).LE.64 )  SUWCP= 0.25D0
             IF(IFREQ.LT.3.AND.UTTAG.GE.ENDTTAG) SUWCP=0.0D0
-            suwpr= acos(sqrt(0.87253D0*(1.-sinel**4)))-el(K)/57.296d0
-            if(suwpr.le.0.d0) suwpr= 0.01d0
-            suwpr= exp(-suwpr**2*1.00d0)
-            suwpr=1.
+C Jun 6, 2020
+c           suwpr= acos(sqrt(0.87253D0*(1.-sinel**4)))-el(K)/57.296d0
+c           if(suwpr.le.0.d0) suwpr= 0.01d0
+c           suwpr= exp(-suwpr**2*1.00d0)
+C          suwpr=1.d0
            endif
 C
 C VTEC MSCL REJECTIONS
       IL= 1
       if(ISVO(I).GT.32.AND.ISVO(I).LE.64 ) IL= 3
+C Jun 6, 2020
+      if(ISVO(I).GT.64.AND.ISVO(I).LE.100 ) IL= 11
+      if(ISVO(I).GT.100.AND.ISVO(I).LE.160) IL= 12
       IF(IFREQ.GE.3)
      &HORDION(4) =    FLTSUM(6,ISVO(I))*AL2 - FLTSUM(5,ISVO(I))*AL1 -
      &                FLTSUM(MAXFLT,ISVO(I))/FLTSUM(1,ISVO(I)) -
@@ -2271,24 +2292,43 @@ C VTEC MSCL REJECTIONS
      & + HORDION(2)/SQRT(1.-(1.-sinel**4)*0.87253D0)*0.10507D-1*suwpr
       ENDIF
        IF(ABS(HORDION(4))*sqrt(SUWCP)*SINEL.GT.(4.4D0*sqrt(1.D0+
-     &        HORDION(9)/(HORDION(11)+ HORDION(15)))).AND.
-     &       (HORDION(11)+HORDION(15)).GT.2.D0) THEN
+C Jun 6, 2020
+C    &        HORDION(9)/(HORDION(11)+ HORDION(15)))).AND.
+C    &       (HORDION(11)+HORDION(15)).GT.2.D0) THEN
+     &        HORDION(9)/(HORDION(16)+ HORDION(22)))).AND.
+     &       (HORDION(16)+HORDION(22)).GT.2.D0) THEN
       write(*,*)'SAT EL dVTEC',isvo(i),el(k), hordion(4),sqrt(hordion(9)
      & /(hordion(11)+ hordion(15))), hordion(11),hordion(15)
         GO TO 50
        END IF
 C
-           J = 11
-C GLONASS DCB NORMALS AT HORDION(15), GPS DCB (11), VTEC (19)
-           IF(ISVO(I).GT.32.AND.ISVO(I).LE.64 ) J= 15
+C Jun 6, 2020 - start
+C          J = 11
+           J = 16
+C GLONASS DCB NORMALS AT HORDION(22), GPS DCB (16), VTEC (40)
+C          IF(ISVO(I).GT.32.AND.ISVO(I).LE.64 ) J= 15
+           IF(ISVO(I).GT.32.AND.ISVO(I).LE.64 ) J= 22
+           IF(ISVO(I).GT.64.AND.ISVO(I).LE.100) J= 28
+           IF(ISVO(I).GT.100.AND.ISVO(I).LE.160) J= 34
+C Jun 6, 2020 - end
            HORDION(J)= HORDION(J)+1.D0*sinel*sinel*SUWCP
            IL= 1
            J= 6
-C GLONASS DCB  AT(HORDION( 9) and THE NORMALS TERM AT HORDION(10)
+C GLONASS DCB  AT(HORDION( 3) and THE NORMALS TERM AT HORDION( 8)
            IF(ISVO(I).GT.32.AND.ISVO(I).LE.64 ) THEN
             IL = 3
             J= 8 
            ENDIF
+C Jun 6, 2020 - start
+           IF(ISVO(I).GT.64.AND.ISVO(I).LE.100 ) THEN
+            IL = 11
+            J  = 13
+           ENDIF
+           IF(ISVO(I).GT.100.AND.ISVO(I).LE.160) THEN
+            IL = 12
+            J  = 14
+           ENDIF
+C Jun 6, 2020 - end
            IF(IFREQ.GE.3) THEN
             HORDION(7)= HORDION(7)-
      &                ( FLTSUM(6,ISVO(I))*AL2 - FLTSUM(5,ISVO(I))*AL1 -
@@ -2328,11 +2368,19 @@ C L1/L2 PHASE (IOBS=2)
            ENDIF
 C
 C USING IONO HGT OF 450 KM FOR SLANT MAPPING (R/(R+H))**2 = 0.87253   
-C &  0.1 TECU CONVERSION FACTOR: 40.309D15/(1/F1^2-1/F2^2) =-0.10507D-1
-           HORDION(19)= HORDION(19)+1./(1.-(1.-sinel**4)*0.87253D0)*
+C &  0.1 TECU CONVERSION FACTOR: 40.309D15*(1/F1^2-1/F2^2) =-0.10507D-1
+C Jun 6, 2020 - start
+C          HORDION(19)= HORDION(19)+1./(1.-(1.-sinel**4)*0.87253D0)*
+C    &                (0.10507D-1)**2*suwpr*suwpr*sinel*sinel*SUWCP
+C                     J= 17
+C          IF(ISVO(I).GT.32.AND.ISVO(I).LE.64 ) J= 18
+           HORDION(40)= HORDION(40)+1./(1.-(1.-sinel**4)*0.87253D0)*
      &                (0.10507D-1)**2*suwpr*suwpr*sinel*sinel*SUWCP
-                      J= 17
-           IF(ISVO(I).GT.32.AND.ISVO(I).LE.64 ) J= 18
+                      J= 36
+           IF(ISVO(I).GT.32.AND.ISVO(I).LE.64 ) J= 37
+           IF(ISVO(I).GT.64.AND.ISVO(I).LE.100) J= 38
+           IF(ISVO(I).GT.100.AND.ISVO(I).LE.160) J= 39
+C Jun 6, 2020 - end
            HORDION(J)= HORDION(J)-1./SQRT(1.-(1.-sinel**4)*0.87253D0)*
      &                0.10507D-1*suwpr*sinel*sinel*SUWCP
 50       CONTINUE
@@ -2375,42 +2423,82 @@ C
 C SOLVE VTEC & STADCB NORMALS ACCUMULATED AT PREVIOUS EPOCH 
 C
 C VTEC & DCB SOLUTION ONLY FOR PHASE PROCESSING!
-      IF( HORDION(19).GT.1.D-10.AND.IOBTYP.EQ.2 ) THEN
-         IF(HORDION(11).GT.1.D0.OR.HORDION(15).GT.1.D0) THEN
+C Jun 6, 2020
+C     IF( HORDION(19).GT.1.D-10.AND.IOBTYP.EQ.2 ) THEN
+C        IF(HORDION(11).GT.1.D0.OR.HORDION(15).GT.1.D0) THEN
+      IF( HORDION(40).GT.1.D-10.AND.IOBTYP.EQ.2 ) THEN
+         IF(HORDION(16).GT.1.D0.OR.HORDION(22).GT.1.D0.OR.  
+     &      HORDION(28).GT.1.D0.OR.HORDION(34).GT.1.D0) THEN
 C GPS OR GLONASS OR GLONASS+GPS
 C    HORDION MAPPING FOR X(DCBg,VTEC,DCBr, ..)
 C HORDION(1)  (2)  (3)  (4)  (5)  (6)   (7)   (8)   (9)   (10)
-C     DCBg  VTEC  DCBr Resd VtRt UdcbG Uvtec UdcbR free  UTTG 
-C HORDION(11)  (12)  (13)  (14)  (15)  (16)  (17)  (18)   (19)  
-C        N11    N21   N31   N12   N22   N32   N13   N23    N33
-C BUT THE ORDER IN THE ABOVE NORNALS N (HORDION(11-19):(DCBg, DCBr, VTEC) !!!
-C ( UdcbG Uvtec UdcbR - the RH side of Normals)
+C     DCBg  VTEC  DCBr Resd VtRt UdcbG Uvtec UdcbR SQsum UTTG 
+C Jun 6, 2020
+C HORDION(11)  (12)  (13)  (14)  (15)                              
+C       DCBe   DCBc  UdcbE UdcbC free
+C HORDION(16)  (17)  (18)   ...  (36)  (37)  (38)  (39)   (40)  
+C        N11    N21   N31   ...   N15   N25   N35   N45    N55
+C BUT THE ORDER IN THE N(5,5):(HORDION(16-40):(DCBg, DCBr, DCBe, DCBc, VTEC) !!!
+C ( UdcbG Uvtec UdcbR, UdcbE, UdcbC - the RH side of Normals)
 C ONLY UPPER TRIANGLE NEEDED FOR INVERSION
-          CALL SPIN ( HORDION(11),  3,  3, sinel     , J)
+C Jun 6, 2020 - start
+C         CALL SPIN ( HORDION(11),  3,  3, sinel     , J)
 C SOLVE FOR DCBg, DCBr & VTEC, RESP (HORDION(1), (3) & (2))
-          HORDION(1)= HORDION(1)+ HORDION(11)*HORDION(6)+
-     &    HORDION(14)*HORDION( 8)+ HORDION(17)*HORDION( 7)
-          HORDION(3)= HORDION(3)+ HORDION(14)*HORDION(6)+
-     &    HORDION(15)*HORDION( 8)+ HORDION(18)*HORDION( 7)
-          HORDION(2)= HORDION(2)+ HORDION(17)*HORDION(6)+
-     &    HORDION(18)*HORDION( 8)+ HORDION(19)*HORDION( 7)
+C         HORDION(1)= HORDION(1)+ HORDION(11)*HORDION(6)+
+C    &    HORDION(14)*HORDION( 8)+ HORDION(17)*HORDION( 7)
+C         HORDION(3)= HORDION(3)+ HORDION(14)*HORDION(6)+
+C    &    HORDION(15)*HORDION( 8)+ HORDION(18)*HORDION( 7)
+C         HORDION(2)= HORDION(2)+ HORDION(17)*HORDION(6)+
+C    &    HORDION(18)*HORDION( 8)+ HORDION(19)*HORDION( 7)
 C VTEC RATE(SMOOTHED OVER 10 INTERVALS) BUT ONLY WHEN VTEC CONVERGED
-      IF(UTTAG.NE.HORDION(10).AND.HORDION(19).LT.400.D0)
-     &    HORDION(5)=(HORDION(5)*9 + (HORDION(17)*HORDION(6)+
-     &    HORDION(18)*HORDION( 8)+ HORDION(19)*HORDION( 7))/
+          CALL SPIN ( HORDION(16),  5,  5, sinel     , J)
+C SOLVE FOR DCBg, DCBr, DCBe, DCBc & VTEC, RESP (HORDION(1),
+C (3),(11), (12) & (2))
+C GPS DCB
+          HORDION(1)= HORDION(1)+ HORDION(16)*HORDION(6)+
+     &    HORDION(21)*HORDION( 8)+ HORDION(36)*HORDION( 7)+
+     &    HORDION(26)*HORDION(13)+ HORDION(31)*HORDION(14)
+C GLN DCB
+          HORDION(3)= HORDION(3)+ HORDION(21)*HORDION(6)+
+     &    HORDION(22)*HORDION( 8)+ HORDION(37)*HORDION( 7)+
+     &    HORDION(27)*HORDION(13)+ HORDION(32)*HORDION(14)
+C GAL DCB
+          HORDION(11)= HORDION(11)+ HORDION(26)*HORDION(6)+
+     &    HORDION(27)*HORDION( 8)+ HORDION(38)*HORDION( 7)+
+     &    HORDION(28)*HORDION(13)+ HORDION(33)*HORDION(14)
+C BEI DCB
+          HORDION(12)= HORDION(12)+ HORDION(31)*HORDION(6)+
+     &    HORDION(32)*HORDION( 8)+ HORDION(39)*HORDION( 7)+
+     &    HORDION(33)*HORDION(13)+ HORDION(34)*HORDION(14)
+C VTEC
+          HORDION(2)= HORDION(2)+ HORDION(36)*HORDION(6)+
+     &    HORDION(37)*HORDION( 8)+ HORDION(40)*HORDION( 7)+
+     &    HORDION(38)*HORDION(13)+ HORDION(39)*HORDION(14)
+C Jun 6, 2020- end
+C VTEC RATE(SMOOTHED OVER 10 INTERVALS) BUT ONLY WHEN VTEC CONVERGED
+C     IF(UTTAG.NE.HORDION(10).AND.HORDION(19).LT.400.D0)
+C    &    HORDION(5)=(HORDION(5)*9 + (HORDION(17)*HORDION(6)+
+C    &    HORDION(18)*HORDION( 8)+ HORDION(19)*HORDION( 7))/
+      IF(UTTAG.NE.HORDION(10).AND.HORDION(40).LT.400.D0)
+     &    HORDION(5)=(HORDION(5)*9 + (HORDION(36)*HORDION(6)+
+     &    HORDION(37)*HORDION( 8)+ HORDION(40)*HORDION( 7) +
+     &    HORDION(38)*HORDION(13)+ HORDION(39)*HORDION(14))/
+C Jun 6, 2020 - end
      &    (UTTAG-HORDION(10)))/10
 C LIMIT VTEC RT to .01 TEU/S
       IF(ABS(HORDION(5)).GT. 1.D-1) HORDION(5)= 1.D-1*HORDION(5)/
      &  ABS(HORDION(5))
 C FORM REDUCED NORMALS (2.2)
 C INITILIZE GPS
-          CALL SPIN ( HORDION(11),  3,  3, sinel     , J)
+C Jun 6, 2020
+C         CALL SPIN ( HORDION(11),  3,  3, sinel     , J)
+          CALL SPIN ( HORDION(16),  5,  5, sinel     , J)
          ENDIF
 C FORCE ONLY REASONABLE VTEC (0, 120) TECU (VTEC 1200 .1TECU)
 C AND CORRECT DCB's ACCORDINGLY FOR A DCB DATUM, BUT ONLY IF REASONABLE
         IF(HORDION(2).LT.20.D0.AND.HORDION(2).GT.-1200.D0) THEN
           IF(IFREQ.GE.3.AND.HORDION(1).NE.0.D0) HORDION(1)=HORDION(1)+
-C NOTE : 40.309D15/(1/F12-1/F22)=-0.0105/0.67 (Vtec/dcb corr)=-.016 
+C NOTE : 40.309D15*(1/F12-1/F22)=-0.0105/0.67 (Vtec/dcb corr)=-.016 
      &      (20.D0-HORDION(2)  )*0.016D0
           IF(IFREQ.GE.3.AND.HORDION(3).NE.0.D0) HORDION(3)=HORDION(3)+
      &      (20.D0-HORDION(2)  )*0.016D0
@@ -2421,12 +2509,20 @@ C NOTE : 40.309D15/(1/F12-1/F22)=-0.0105/0.67 (Vtec/dcb corr)=-.016
      &      (1200.D0-HORDION(2) )* 0.016D0
           IF(IFREQ.GE.3.AND.HORDION(3).NE.0.D0)HORDION(3)=HORDION(3)+
      &      (1200.D0-HORDION(2) )* 0.016D0
+C Jun 6, 2020
+          IF(IFREQ.GE.3.AND.HORDION(11).NE.0.D0)HORDION(11)=HORDION(11)+
+     &      (1200.D0-HORDION(2) )* 0.016D0
+          IF(IFREQ.GE.3.AND.HORDION(12).NE.0.D0)HORDION(12)=HORDION(12)+
+     &      (1200.D0-HORDION(2) )* 0.016D0
           HORDION(2)=12.D02
         ENDIF
 C CORRECT INITIAL VTEC & STA DCB IF G ABS(sta DCB) > 15 NS(4.5m) 
         IF(ABS(HORDION(1)).GT. 4.5D0) THEN
          HORDION(2)= HORDION(2) -HORDION(1)/0.016D0
          IF(HORDION(3).NE.0.D0) HORDION(3)= HORDION(3)-HORDION(1)        
+c Jun 6, 2020
+         IF(HORDION(11).NE.0.D0) HORDION(11)= HORDION(11)-HORDION(1)        
+         IF(HORDION(12).NE.0.D0) HORDION(12)= HORDION(12)-HORDION(1)        
          HORDION(1)= 0.D0                         
         ENDIF
 C IN CASE OF GARBAGE VTECs < -1200 or > 2400(.1tecu)
@@ -2439,6 +2535,9 @@ C IMITILIZE U's & TIME
         HORDION(6)=0.D0
         HORDION(7)=0.D0
         HORDION(8)=0.D0
+C Jun 6, 2020
+        HORDION(13)=0.D0
+        HORDION(14)=0.D0
         HORDION(10)=UTTAG
       ENDIF
 C
@@ -5933,7 +6032,9 @@ C THE INPUT DCB IS ONLY VALID FOR L3 PROCESSING
                 DO I=1,NRXDCB
                  IF( LRXDCB(I) .EQ. STNA(1:4) ) THEN
                   HORDION(1) = RXDCB(I)
-                  HORDION(11) = 1.D20
+C Jun 6, 2020
+C                 HORDION(11) = 1.D20
+                  HORDION(16) = 1.D20
                  END IF
                 END DO
                 END IF
@@ -30739,7 +30840,10 @@ c 2020May12 : new code bias general input
       CHARACTER*12 P3FLT(2,2)
 C Apr 25, 2020
       CHARACTER*3 L2E, L2C, L2
-      INTEGER*4 IDSVBLK(MAXBLK,32),NSVBLK(MAXBLK)
+c 2020Jun14 : up it to 60
+c     INTEGER*4 IDSVBLK(MAXBLK,32),NSVBLK(MAXBLK)
+      INTEGER*4 IDSVBLK(MAXBLK,60),NSVBLK(MAXBLK)
+c 2020Jun14 : up it to 60
      &         ,I,IREFIN,IBLK,IPRN,IDBLK,J
       REAL*8    DX(MAXBLK),DY(MAXBLK),DZ(MAXBLK)
       LOGICAL*4  FOUND22
@@ -31548,7 +31652,9 @@ c 2020Apr16 : day boundary AR NL jumps handling
       REAL*8    PAVG(MAXSAT,MAXARC), PRMS(MAXSAT,MAXARC)
       REAL*8    STIME(MAXSAT,MAXARC), ETIME(MAXSAT,MAXARC)
       REAL*8  SOBWD, FLTPAR(*) 
-      REAL*8  DP1P2
+C Jun 6, 2020
+C     REAL*8  DP1P2
+      REAL*8  DP1P2(*)
 C
       CHARACTER*35   STAHDR(2)
       CHARACTER*35   STMHDR(2)
@@ -31872,7 +31978,10 @@ C    & FIX2=(100*(NOFXALL(1)+NOFXALL(2)))/(NOBALL(1)+NOBALL(2))
      &      NRJALL(1)+NRJALL(2)+NRJALL(3)+NRJALL(4),
      &      NFIX,NEPOCHDEL,SQRT(SOBWD/NFIX/3.d0),
      &      FLTPAR(1)*100,FLTPAR(2)*100, FLTPAR(3)*100
-     &      ,DP1P2/0.29979D0
+C Jun 6, 2020
+C    &      ,DP1P2/0.29979D0
+     &      ,DP1P2(1)/0.29979D0, DP1P2(3)/0.29979D0,DP1P2(11)/0.29979D0,
+     &       DP1P2(12)/0.29979D0
      &     ,FIX,FIX1,FIX2
 C
 C
@@ -31925,7 +32034,9 @@ c 2020Apr16 : day boundary AR NL jumps handling
 C Mar 30, 2020
 C    &       1X,2(I2.2,':'),I2.2,F2.1), 1X,I2,4(1X,I6), 2f5.1,f5.0,f6.0,
      &       1X,2(I2.2,':'),I2.2,F2.1), 1X,I3,4(1X,I6), 2f5.1,f5.0,f6.0,
-     &       f8.3,3(I4,'%') )
+C Jun 6, 2020
+C    &       f8.3,3(I4,'%') )
+     &       4f8.3,3(I4,'%') )
  1410 FORMAT ( A3,1X,A4,1X,I4,'/',I2.2,'/',I2.2,
 C Mar 30, 2020
 C    &         1X,A3,1X,A2,4(1X,F6.3),7(1X,I4),4(1X,I4),1X,I10 )
