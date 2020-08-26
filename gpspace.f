@@ -157,7 +157,10 @@ C
 C
 C     ARRAYS FOR STATION DIFFERENTIAL CODE BIASES
 C
-      REAL*8    RXDCB(MAXADT),RXDCBS(MAXADT)
+c 2020Aug29 : extending to multignss
+c     REAL*8    RXDCB(MAXADT),RXDCBS(MAXADT)
+      REAL*8    RXDCB(4,MAXADT),RXDCBS(4,MAXADT)
+c 2020Aug29 : extending to multignss
 C
 C     ARRAYS FOR OLD OBSERVATIONS
 C
@@ -584,6 +587,22 @@ c 2020May12 : new code bias general input
       INTEGER*4 ICDBIAS,IPHBIAS
       DATA ICDBIAS,IPHBIAS/0,0/
 c 2020May12 : new code bias general input
+c 2020Aug31 : extending to differential biases
+      CHARACTER*3 RNX3CODES(4,6)
+C                      GPS   GLN   GAL   BEI
+      DATA RNX3CODES/ '   ','   ','   ','   ',                          C     Freq1 Phase
+     &                '   ','   ','   ','   ',                          C     Freq2 Phase
+     &                '   ','   ','   ','   ',                          C     Freq1 Principal code
+     &                '   ','   ','   ','   ',                          C     Freq2 Principal code
+     &                '   ','   ','C1X','C2X',                          C     Freq1 Alternate code
+     &                '   ','   ','C5X','C7X'/                          C     Freq2 Alternate code
+c     DATA RNX3CODES/ 'L1C','L1P','L1C','L2I',                          C     Freq1 Phase
+c    &                'L2W','L2P','L5Q','L7P',                          C     Freq2 Phase
+c    &                'C1W','C1C','C1C','C2I',                          C     Freq1 Principal code
+c    &                'C2W','C2C','C5Q','C7P',                          C     Freq2 Principal code
+c    &                'C1C','C1C','C1X','C2X',                          C     Freq1 Alternate code
+c    &                'C2C','C2C','C5X','C7X'/                          C     Freq2 Alternate code
+c 2020Aug31 : extending to differential biases
 C
       DATA YAWMODEL/0/
 C RTCM SPECIFIC INITIALIZATION
@@ -682,7 +701,7 @@ C
 C     VERSION NUMBER
       DATA IVERSION/120/
 C     RELEASE NUMBER (day of year,last two-digits of year)
-      DATA IRLEASE/22520/
+      DATA IRLEASE/24420/
       DATA NFIXR / 0/
       DATA INTCLK / 900/
       DATA ITER / 0/
@@ -950,7 +969,10 @@ C Apr 25, 2020 -end
 C
       CALL RDHDR ( IFMTM, LUMEA, IYEARS, IMTHS, IDAYS, STNA,
      &             OBSINT, NOBREC, IOBPOS, DLAY12, NFREQ, IFREQ, HDXYZH,
-     &             ANTNAM, RECNAM, RIFRATE, IEOF )
+c 2020Aug31 : extending to differential biases
+     &             RNX3CODES, ANTNAM, RECNAM, RIFRATE, IEOF )
+c    &             ANTNAM, RECNAM, RIFRATE, IEOF )
+c 2020Aug31 : extending to differential biases
 C
       IF (IEOF .EQ. 1 .OR. OBSINT .EQ. 0.D0 ) THEN
         WRITE(*,*) '*END - OBSERVATION INTERVAL NOT VALID'
@@ -1257,7 +1279,10 @@ C
 c 2020May12 : new code bias general input
      &     NAMBIA, NAMBIAS(1), STNA, ICDBIAS, IPHBIAS, ISVB, NAMSVB,
      &     IGNSS, ISVN, IBLK, DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2,
-     &     AVCLK, PRDC,
+c 2020Aug31 : extending to differential biases
+c    &     AVCLK, PRDC,
+     &     AVCLK, PRDC, RNX3CODES, HORDION,
+c 2020Aug31 : extending to differential biases
 c    &     ISVB, NAMSVB, IGNSS, ISVN, IBLK, 
 c    &     DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
 c 2020May12 : new code bias general input
@@ -1378,9 +1403,37 @@ C Mar 23, 2020
 c 2020May12 : new code bias general input
 c     CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
 c    &             DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
-      CALL BIAINP(LUMET, NAMBIAS(NDAY), STNA, ICDBIAS, IPHBIAS, PRDC,
-     &            DP1P2, DP1C1, DP2C2, IYEARS, JULD, IERR, IEND,
+c 2020Aug31 : extending to differential biases
+c     CALL BIAINP(LUMET, NAMBIAS(NDAY), STNA, ICDBIAS, IPHBIAS, PRDC,
+c    &            DP1P2, DP1C1, DP2C2, IYEARS, JULD, IERR, IEND,
+c    &            IFREQ, IPC )
+      CALL BIAINP(LUMET, NAMBIAS(NDAY), STNA, RNX3CODES, ICDBIAS,
+     &            IPHBIAS, PRDC, DP1P2, DP1C1, DP2C2, IYEARS, JULD,
+     &            NRXDCB, LRXDCB, RXDCB, RXDCBS, IERR, IEND,
      &            IFREQ, IPC )
+c     IF( NRXDCB .EQ. 1 ) THEN
+c      IF(RXDCBS(1,1).GT.0.D0) THEN
+c       HORDION(1) = RXDCB(1,1)
+c       HORDION(16) = RXDCBS(1,1)**2
+c       HORDION(16) = 1.D20
+c      END IF
+c      IF(RXDCBS(2,1).GT.0.D0) THEN
+c       HORDION(3) = RXDCB(2,1)
+c       HORDION(22) = RXDCBS(2,1)**2
+c       HORDION(22) = 1.D20
+c      END IF
+c      IF(RXDCBS(3,1).GT.0.D0) THEN
+c       HORDION(11) = RXDCB(3,1)
+c       HORDION(28) = RXDCBS(3,1)**2
+c       HORDION(28) = 1.D20
+c      END IF
+c      IF(RXDCBS(4,1).GT.0.D0) THEN
+c       HORDION(12) = RXDCB(4,1)
+c       HORDION(34) = RXDCBS(4,1)**2
+c       HORDION(34) = 1.D20
+c      END IF
+c     END IF
+c 2020Aug31 : extending to differential biases
 c 2020May12 : new code bias general input
 C
 C----------------------------------------------------------------------
@@ -1963,10 +2016,34 @@ C THE INPUT DCB IS ONLY VALID FOR L3 PROCESSING
              IF( IFREQ .GE. 3 ) THEN
              DO I=1,NRXDCB
                IF( LRXDCB(I) .EQ. STNA(1:4) ) THEN
-                 HORDION(1) = RXDCB(I)
+c 2020Aug29 : extending to multignss
+c                HORDION(1) = RXDCB(I)
+                 IF(RXDCBS(1,I).GT.0.D0) THEN
+                  HORDION(1) = RXDCB(1,I)
+                  HORDION(16) = RXDCBS(1,I)**2
+                  HORDION(16) = 1.D20
+                 END IF
+                 IF(RXDCBS(2,I).GT.0.D0) THEN
+                  HORDION(3) = RXDCB(2,I)
+                  HORDION(22) = RXDCBS(2,I)**2
+                  HORDION(22) = 1.D20
+                 END IF
+                 IF(RXDCBS(3,I).GT.0.D0) THEN
+                  HORDION(11) = RXDCB(3,I)
+                  HORDION(28) = RXDCBS(3,I)**2
+                  HORDION(28) = 1.D20
+                 END IF
+                 IF(RXDCBS(4,I).GT.0.D0) THEN
+                  HORDION(12) = RXDCB(4,I)
+                  HORDION(34) = RXDCBS(4,I)**2
+                  HORDION(34) = 1.D20
+                 END IF
+c 2020Aug29 : extending to multignss
 C Jun 6, 2020
 C                HORDION(11) = 1.D20
-                 HORDION(16) = 1.D20
+c 2020Aug29 : extending to multignss
+c                HORDION(16) = 1.D20
+c 2020Aug29 : extending to multignss
                END IF
              END DO
              END IF
@@ -2702,9 +2779,37 @@ C
 C Mar 23, 2020
 c 2020May12 : new code bias general input
 c       CALL BIAINP(LUMET, NAMEPH(NDAY), STNA, PRDC, DP1P2, DP1C1,
-        CALL BIAINP(LUMET, NAMBIAS(NDAY), STNA, ICDBIAS, IPHBIAS, PRDC,
-     &              DP1P2, DP1C1, DP2C2, IYEAR, JULD, IERR, IEND, IFREQ,
-     &              IPC )
+c 2020Aug31 : extending to differential biases
+c       CALL BIAINP(LUMET, NAMBIAS(NDAY), STNA, ICDBIAS, IPHBIAS, PRDC,
+c    &              DP1P2, DP1C1, DP2C2, IYEAR, JULD, IERR, IEND, IFREQ,
+c    &              IPC )
+        CALL BIAINP(LUMET, NAMBIAS(NDAY), STNA, RNX3CODES, ICDBIAS,
+     &              IPHBIAS, PRDC, DP1P2, DP1C1, DP2C2, IYEAR, JULD,
+     &              NRXDCB, LRXDCB, RXDCB, RXDCBS, IERR, IEND,
+     &              IFREQ, IPC )
+c       IF( NRXDCB .EQ. 1 ) THEN
+c        IF(RXDCBS(1,1).GT.0.D0) THEN
+c         HORDION(1) = RXDCB(1,1)
+c         HORDION(16) = RXDCBS(1,1)**2
+c         HORDION(16) = 1.D20
+c        END IF
+c        IF(RXDCBS(2,1).GT.0.D0) THEN
+c         HORDION(3) = RXDCB(2,1)
+c         HORDION(22) = RXDCBS(2,1)**2
+c         HORDION(22) = 1.D20
+c        END IF
+c        IF(RXDCBS(3,1).GT.0.D0) THEN
+c         HORDION(11) = RXDCB(3,1)
+c         HORDION(28) = RXDCBS(3,1)**2
+c         HORDION(28) = 1.D20
+c        END IF
+c        IF(RXDCBS(4,1).GT.0.D0) THEN
+c         HORDION(12) = RXDCB(4,1)
+c         HORDION(34) = RXDCBS(4,1)**2
+c         HORDION(34) = 1.D20
+c        END IF
+c       END IF
+c 2020Aug31 : extending to differential biases
 cc 2020May08 : use current year rather than start year
 c    &              DP2C2,  IYEAR , JULD, IERR, IEND, IFREQ, IPC )
 cc    &              DP2C2,  IYEARS, JULD, IERR, IEND, IFREQ, IPC )
@@ -2869,8 +2974,26 @@ C THE INPUT DCB IS ONLY VALID FOR L3 PROCESSING
              IF( IFREQ .EQ. 3 ) THEN
               DO I=1,NRXDCB
                IF( LRXDCB(I) .EQ. STNA(1:4) ) THEN
-                 HORDION(1) = RXDCB(I)
-                 HORDION(11) = 1.D20
+c 2020Aug29 : extending to multignss
+c                HORDION(1) = RXDCB(I)
+c                HORDION(11) = 1.D20
+                 IF(RXDCBS(1,I).GT.0.D0) THEN
+                  HORDION(1) = RXDCB(1,I)
+                  HORDION(16) = RXDCBS(1,I)**2
+                 END IF
+                 IF(RXDCBS(2,I).GT.0.D0) THEN
+                  HORDION(3) = RXDCB(2,I)
+                  HORDION(22) = RXDCBS(2,I)**2
+                 END IF
+                 IF(RXDCBS(3,I).GT.0.D0) THEN
+                  HORDION(11) = RXDCB(3,I)
+                  HORDION(28) = RXDCBS(3,I)**2
+                 END IF
+                 IF(RXDCBS(4,I).GT.0.D0) THEN
+                  HORDION(12) = RXDCB(4,I)
+                  HORDION(34) = RXDCBS(4,I)**2
+                 END IF
+c 2020Aug29 : extending to multignss
                END IF
               END DO
              END IF
@@ -6031,10 +6154,30 @@ C THE INPUT DCB IS ONLY VALID FOR L3 PROCESSING
                 IF( IFREQ .EQ. 3 ) THEN
                 DO I=1,NRXDCB
                  IF( LRXDCB(I) .EQ. STNA(1:4) ) THEN
-                  HORDION(1) = RXDCB(I)
+c 2020Aug29 : extending to multignss
+c                 HORDION(1) = RXDCB(I)
+                  IF(RXDCBS(1,I).GT.0.D0) THEN
+                   HORDION(1) = RXDCB(1,I)
+                   HORDION(16) = RXDCBS(1,I)**2
+                  END IF
+                  IF(RXDCBS(2,I).GT.0.D0) THEN
+                   HORDION(3) = RXDCB(2,I)
+                   HORDION(22) = RXDCBS(2,I)**2
+                  END IF
+                  IF(RXDCBS(3,I).GT.0.D0) THEN
+                   HORDION(11) = RXDCB(3,I)
+                   HORDION(28) = RXDCBS(3,I)**2
+                  END IF
+                  IF(RXDCBS(4,I).GT.0.D0) THEN
+                   HORDION(12) = RXDCB(4,I)
+                   HORDION(34) = RXDCBS(4,I)**2
+                  END IF
+c 2020Aug29 : extending to multignss
 C Jun 6, 2020
 C                 HORDION(11) = 1.D20
-                  HORDION(16) = 1.D20
+c 2020Aug29 : extending to multignss
+c                 HORDION(16) = 1.D20
+c 2020Aug29 : extending to multignss
                  END IF
                 END DO
                 END IF
@@ -6732,7 +6875,11 @@ c 2020Apr16 : day boundary AR NL jumps handling
      &          ,GLNCLK,SGLNCLK, GALCLK, SGALCLK, BEICLK, SBEICLK
      &          ,DABS(FLTPAR(1)),DABS(FLTPAR(2)),AVGNL,AVGWL
      &          ,HORDION(2)
+c 2020Aug31 : 
      &          ,HORDION(1)/C*1.D9, HORDION(3)/C*1.D9, RIFRATE, NAMBFX
+c    &          ,HORDION(1)/C*1.D9, HORDION(3)/C*1.D9
+c    &          ,HORDION(11)/C*1.D9, HORDION(12)/C*1.D9, RIFRATE, NAMBFX
+c 2020Aug31 : 
      &          ,NSVDWGT
            ELSE
            WRITE(LPOS,2411) DIR((1-IDIR)/2+1),RFNAME, 
@@ -6752,7 +6899,11 @@ c 2020Apr16 : day boundary AR NL jumps handling
      &          ,GLNCLK,SGLNCLK, GALCLK, SGALCLK, BEICLK, SBEICLK
      &          ,DABS(FLTPAR(1)),DABS(FLTPAR(2)),AVGNL,AVGWL
      &          ,HORDION(2)
+c 2020Aug31 : 
      &          ,HORDION(1)/C*1.D9, HORDION(3)/C*1.D9, RIFRATE,NAMBFX
+c    &          ,HORDION(1)/C*1.D9, HORDION(3)/C*1.D9
+c    &          ,HORDION(11)/C*1.D9, HORDION(12)/C*1.D9, RIFRATE,NAMBFX
+c 2020Aug31 : 
      &          ,NSVDWGT
           END IF
 C
@@ -6782,7 +6933,11 @@ C
      &          ,GLNCLK,SGLNCLK, GALCLK, SGALCLK, BEICLK, SBEICLK
      &          ,DABS(FLTPAR(1)),DABS(FLTPAR(2)),AVGNL,AVGWL
      &          ,HORDION(2)
+c 2020Aug31 : 
      &          ,HORDION(1)/C*1.D9, HORDION(3)/C*1.D9, RIFRATE,NAMBFX
+c    &          ,HORDION(1)/C*1.D9, HORDION(3)/C*1.D9
+c    &          ,HORDION(11)/C*1.D9, HORDION(12)/C*1.D9, RIFRATE,NAMBFX
+c 2020Aug31 : 
      &          ,NSVDWGT
           ELSE
            WRITE(LPOS,2411) DIR((1-IDIR)/2+1),RFNAME, 
@@ -6803,7 +6958,11 @@ C
      &          ,GLNCLK,SGLNCLK, GALCLK, SGALCLK, BEICLK, SBEICLK
      &          ,DABS(FLTPAR(1)),DABS(FLTPAR(2)),AVGNL,AVGWL
      &          ,HORDION(2)
+c 2020Aug31 : 
      &          ,HORDION(1)/C*1.D9, HORDION(3)/C*1.D9, RIFRATE,NAMBFX
+c    &          ,HORDION(1)/C*1.D9, HORDION(3)/C*1.D9
+c    &          ,HORDION(11)/C*1.D9, HORDION(12)/C*1.D9, RIFRATE,NAMBFX
+c 2020Aug31 : 
      &          ,NSVDWGT
           END IF
         END IF
@@ -7362,6 +7521,9 @@ C 900 FORMAT( /,1X,I4,2('/',I2), 1X,2(I2,':'), F6.3 ,1X,'PRNS # ',36I6)
      &       1X,'BEICLK(ns)',1X,'SBEICLK(ns)',
      &       1X,'MAXNL',1X,'MAXWL',1X,'AVGNL(m)',1X,'AVGWL(m)'
      &       ,1X,'VTEC(.1TECU)',1X,'GPS_DP1P2(ns)',1X,'GLN_DP1P2(ns)'
+c 2020Aug31 : 
+     &       ,1X,'GAL_DP1P2(ns)',1X,'BEI_DP1P2(ns)'
+c 2020Aug31 : 
      &       ,1X,'RIFRATE',1X,'NAMBFIX',1X,'NSVDWGT')
  2401 FORMAT('DIR',1X,'FRAME',8X,'STN',9X,'DOY',1X,'YEAR-MM-DD',1X,
      &     'HR:MN:SS.SSS',1X,'NSV',1X,'GDOP',4X,'SDC',4X,'SDP',9X,
@@ -7374,19 +7536,28 @@ C 900 FORMAT( /,1X,I4,2('/',I2), 1X,2(I2,':'), F6.3 ,1X,'PRNS # ',36I6)
      &       1X,'BEICLK(ns)',1X,'SBEICLK(ns)',
      &       1X,'MAXNL(m)',1X,'MAXWL(m)',1X,'AVGNL(m)',1X,'AVGWL(m)'
      &       ,1X,'VTEC(.1TECU)',1X,'GPS_DP1P2(ns)',1X,'GLN_DP1P2(ns)'
+c 2020Aug31 : 
+     &       ,1X,'GAL_DP1P2(ns)',1X,'BEI_DP1P2(ns)'
+c 2020Aug31 : 
      &       ,1X,'RIFRATE',1X,'NAMBFIX',1X,'NSVDWGT')
  2410 FORMAT(A3,1X,A11,1X,A4,1X,F11.7,1X,I4,'-',I2.2,'-',
      &       I2.2,1X,
      &       I2.2,':',I2.2,':',I2.2,'.',I3.3,1X,I3,1X,F4.1,1X,F6.2,1X,
      &       F6.4,1X,3(F13.3,1X),F15.3,1X,F8.4,1X,4(F8.3,1X),F8.4,1X,
      &       2(A6,1X,I6,1X,F8.5,1X),F13.3,1X,I2,4(1X,f5.1),
+c 2020Aug31 : 
+c    &       1X,F8.4,1X,3(F15.3,1X,F8.3),4(1X,F10.4),6(1X,F8.1),2I3 )
      &       1X,F8.4,1X,3(F15.3,1X,F8.3),4(1X,F10.4),4(1X,F8.1),2I3 )
+c 2020Aug31 : 
  2411 FORMAT(A3,1X,A11,1X,A4,1X,F11.7,1X,I4,'-',I2.2,'-',
      &       I2.2,1X,
      &       I2.2,':',I2.2,':',I2.2,'.',I3.3,1X,I3,1X,F4.1,1X,F6.2,1X,
      &       F6.4,1X,3(F13.3,1X),F15.3,1X,F8.4,1X,4(F8.3,1X),F8.4,1X,
      &       3(F16.3,1X),I2,4(1X,f5.1),
+c 2020Aug31 : 
+c    &       1X,F8.4,1X,3(F15.3,1X,F8.3),4(1X,F10.4),6(1X,F8.1) ,2I3)
      &       1X,F8.4,1X,3(F15.3,1X,F8.3),4(1X,F10.4),4(1X,F8.1) ,2I3)
+c 2020Aug31 : 
  2500 FORMAT(I10,F15.3)
  2600 FORMAT('DIR',1X,'DATE',8X,'DOY',9X,'HH:MM:SSS',5X,
      &       'PRN',7X,'AZI',7X,'ELV',7X,'VPR',7X,'VCP',7X,
@@ -15049,6 +15220,9 @@ C
 C
       SUBROUTINE HDRNX ( LUMEA, IYEAR, IMTH, IDAYM, STNA,
      &                   OBSINT, NOBTYP, IOBPOS, NFREQ, HDXYZH, 
+c 2020Aug31 : extending to differential biases
+     &                   RNX3CODES,
+c 2020Aug31 : extending to differential biases
      &                   ANTNAM, RECNAM, IFREQ, IEOF )
 C
 C     NAME              HDRNX
@@ -15079,6 +15253,9 @@ C
       INTEGER*4   IOBPOS(10), NOBTYP, NFREQ
       REAL*8       HDXYZH(4), OBSINT
       CHARACTER*40 STNA
+c 2020Aug31 : extending to differential biases
+      CHARACTER*3 RNX3CODES(4,6)
+c 2020Aug31 : extending to differential biases
 C
       INTEGER*4    IDUM
       INTEGER*4    IDATE
@@ -15095,6 +15272,9 @@ C manage up to 30 observation types (2.11 is 26)
 C
       CHARACTER*2  OBTYP(30)
       INTEGER*4    NOBTYPR
+c 2020Aug31 : extending to differential biases
+      INTEGER*4    IGNSS
+c 2020Aug31 : extending to differential biases
 C
 C------------------------------------------------------------------------
 C     READ HEADER RECORD FROM RINEX FORMAT
@@ -15170,6 +15350,78 @@ C
 c!       write(*,*) record
       END IF
 C
+c 2020Aug31 : extending to differential biases
+C STORE RNX ORIGINAL OBSERVATION CODES AS SPECIFIED BY gfzrnx APPLICATION
+C EXAMPLE:
+C RINEX 3 -> 2 TYPE CONVERSION DETAILS:                       COMMENT             
+C -------------------------------------                       COMMENT             
+C    G C1C -> C1                                              COMMENT
+C ...
+C    R C1C -> C1                                              COMMENT
+C ...
+C    E C1C -> C1                                              COMMENT
+C ...
+C    C C2I -> C2                                              COMMENT
+C
+      IF( COMMENT(1:7) .EQ. 'COMMENT' .AND.
+     &    RECORD(1:3).EQ.'   ' .AND.
+     &    ( RECORD( 4: 5).EQ.'G '.OR.RECORD( 4: 5).EQ.'R '.OR.
+     &      RECORD( 4: 5).EQ.'E '.OR.RECORD( 4: 5).EQ.'C ') .AND.
+     &    ( RECORD( 6: 6).EQ.'C'.OR.RECORD( 6: 6).EQ.'P'.OR.
+     &                              RECORD( 6: 6).EQ.'L') .AND.
+     &    ( RECORD( 7: 7).EQ.'1'.OR.RECORD( 7: 7).EQ.'2'.OR.
+     &      RECORD( 7: 7).EQ.'3'.OR.RECORD( 7: 7).EQ.'4'.OR.
+     &      RECORD( 7: 7).EQ.'5'.OR.RECORD( 7: 7).EQ.'6'.OR.
+     &      RECORD( 7: 7).EQ.'7'.OR.RECORD( 7: 7).EQ.'8') .AND.
+     &    RECORD(9:12).EQ.' -> ' .AND.
+     &    ( RECORD(13:13).EQ.'C'.OR.RECORD(13:13).EQ.'P'.OR.
+     &                              RECORD(13:13).EQ.'L') .AND.
+     &    ( RECORD(14:14).EQ.'1'.OR.RECORD(14:14).EQ.'2'.OR.
+     &      RECORD(14:14).EQ.'3'.OR.RECORD(14:14).EQ.'4'.OR.
+     &      RECORD(14:14).EQ.'5'.OR.RECORD(14:14).EQ.'6'.OR.
+     &      RECORD(14:14).EQ.'7'.OR.RECORD(14:14).EQ.'8') .AND.
+     &    RECORD(15:60).EQ.
+     &         '                                              '  ) THEN
+       IF( RECORD(4:4) .EQ. 'G') IGNSS=1
+       IF( RECORD(4:4) .EQ. 'R') IGNSS=2
+       IF( RECORD(4:4) .EQ. 'E') IGNSS=3
+       IF( RECORD(4:4) .EQ. 'C') IGNSS=4
+C GPS/GLONASS DEFAULT SELECTIONS
+       IF( IGNSS.LE.2) THEN
+        IF( RECORD(13:14).EQ. 'L1') RNX3CODES(IGNSS,1)=RECORD(6:8)
+        IF( RECORD(13:14).EQ. 'P1') RNX3CODES(IGNSS,3)=RECORD(6:8)
+        IF( RECORD(13:14).EQ. 'C1') RNX3CODES(IGNSS,5)=RECORD(6:8)
+        IF( RECORD(13:14).EQ. 'L2') RNX3CODES(IGNSS,2)=RECORD(6:8)
+        IF( RECORD(13:14).EQ. 'P2') RNX3CODES(IGNSS,4)=RECORD(6:8)
+        IF( RECORD(13:14).EQ. 'C2') RNX3CODES(IGNSS,6)=RECORD(6:8)
+C GALILEO DEFAULT/SPECIAL SELECTIONS
+       ELSE IF( IGNSS.EQ.3) THEN
+        IF( RECORD(13:14).EQ. 'L1') RNX3CODES(IGNSS,1)=RECORD(6:8)
+        IF( RECORD(13:14).EQ. 'C1') RNX3CODES(IGNSS,3)=RECORD(6:8)
+        IF(IFREQ.EQ.8) THEN
+         IF( RECORD(13:14).EQ. 'L8') RNX3CODES(IGNSS,2)=RECORD(6:8)
+         IF( RECORD(13:14).EQ. 'C8') RNX3CODES(IGNSS,4)=RECORD(6:8)
+        ELSE IF(IFREQ.EQ.7) THEN
+         IF( RECORD(13:14).EQ. 'L7') RNX3CODES(IGNSS,2)=RECORD(6:8)
+         IF( RECORD(13:14).EQ. 'C7') RNX3CODES(IGNSS,4)=RECORD(6:8)
+        ELSE
+         IF( RECORD(13:14).EQ. 'L5') RNX3CODES(IGNSS,2)=RECORD(6:8)
+         IF( RECORD(13:14).EQ. 'C5') RNX3CODES(IGNSS,4)=RECORD(6:8)
+        ENDIF
+C BEIDOU DEFAULT/SPECIAL SELECTIONS
+       ELSE
+        IF( RECORD(13:14).EQ. 'L2') RNX3CODES(IGNSS,1)=RECORD(6:8)
+        IF( RECORD(13:14).EQ. 'C2') RNX3CODES(IGNSS,3)=RECORD(6:8)
+        IF(IFREQ.EQ.6) THEN
+         IF( RECORD(13:14).EQ. 'L6') RNX3CODES(IGNSS,2)=RECORD(6:8)
+         IF( RECORD(13:14).EQ. 'C6') RNX3CODES(IGNSS,4)=RECORD(6:8)
+        ELSE
+         IF( RECORD(13:14).EQ. 'L7') RNX3CODES(IGNSS,2)=RECORD(6:8)
+         IF( RECORD(13:14).EQ. 'C7') RNX3CODES(IGNSS,4)=RECORD(6:8)
+        END IF
+       END IF
+      END IF
+c 2020Aug31 : extending to differential biases
       GO TO 100
   200 CONTINUE
       DO IO=1,MIN(30,NOBTYP)
@@ -15192,10 +15444,10 @@ C GAL F2 DEFAULT
        IF (OBTYP(IO).EQ.'C5') IOBPOS(8) = IO
 C BEI F2 DEFAULT
 C Apr 25, 2020 start  FOR IFREQ=6, use B1/B3 (L2/L6) BEI3 FQCY
-      IF(IFREQ.EQ.6) THEN
-       IF (OBTYP(IO).EQ.'L6') IOBPOS(9) = IO
-       IF (OBTYP(IO).EQ.'C6') IOBPOS(10) = IO
-      ENDIF
+       IF(IFREQ.EQ.6) THEN
+        IF (OBTYP(IO).EQ.'L6') IOBPOS(9) = IO
+        IF (OBTYP(IO).EQ.'C6') IOBPOS(10) = IO
+       ENDIF
 C      IF (OBTYP(IO).EQ.'L7') IOBPOS(9) = IO
 C      IF (OBTYP(IO).EQ.'C7') IOBPOS(10) = IO
        IF (IOBPOS(9 ).EQ.0.AND.OBTYP(IO).EQ.'L7') IOBPOS(9)  = IO
@@ -19575,7 +19827,10 @@ C
 c 2020May12 : new code bias general input
      &           NAMBIA, NAMBIAS, STNA, ICDBIAS, IPHBIAS, ISVB, NAMSVB,
      &           IGNSS, ISVN, ISVBLK, DSVX, DSVY, DSVZ, DP1P2, DP1C1,
-     &           DP2C2, AVCLK, PRDC,
+c 2020Aug31 : extending to differential biases
+c    &           DP2C2, AVCLK, PRDC,
+     &           DP2C2, AVCLK, PRDC, RNX3CODES, HORDION,
+c 2020Aug31 : extending to differential biases
 c    &           ISVB, NAMSVB, IGNSS, ISVN, ISVBLK, 
 c    &           DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
 c 2020May12 : new code bias general input
@@ -19614,6 +19869,10 @@ c 2020May12 : new code bias general input
      &             NAMBIAS
 c     CHARACTER*80 NAMFLT,NAMSVB,NAMOLC,NAMPCV,NAMTRF,NAMMET
 c 2020May12 : new code bias general input
+c 2020Aug31 : extending to differential biases
+      CHARACTER*3 RNX3CODES(4,6)
+      REAL*8      HORDION(*)
+c 2020Aug31 : extending to differential biases
       CHARACTER*1  IGNSS(*)
       CHARACTER*20 ANTNAM
       CHARACTER*5  RFRAME
@@ -19640,6 +19899,11 @@ c 2020May12 : new code bias general input
       INTEGER*4 JULD, IERR, IEND, ICDBIAS, IPHBIAS, JCDBIAS, JPHBIAS
       REAL*8 PRDC(10,*)
 c 2020May12 : new code bias general input
+c 2020Aug31 : extending to differential biases
+      CHARACTER*4 LRXDCB(1)
+      INTEGER*4   NRXDCB
+      REAL*8      RXDCB(4,1),RXDCBS(4,1)
+c 2020Aug31 : extending to differential biases
 C
 C     READ FILTER PARAMETERS
 C   
@@ -19669,12 +19933,68 @@ c!    WRITE(*,*) 'CALLING RDSAT',LUDEF,NAMSVB
 c 2020May12 : new code bias general input
       CALL JULDM ( JULD, IYEARS, IMTHS, IDAYS, 1 )
 C SUPERSEDE SVB WITH GPSPPP.BIA OR DEF BIA ENTRY
-      CALL BIAINP(LUDEF, NAMBIA, STNA, JCDBIAS, JPHBIAS, PRDC, DP1P2,
-     &            DP1C1, DP2C2,  IYEARS , JULD, IERR, IEND, IFREQ, IPC )
+c 2020Aug31 : extending to differential biases
+c     CALL BIAINP(LUDEF, NAMBIA, STNA, JCDBIAS, JPHBIAS, PRDC, DP1P2,
+c    &            DP1C1, DP2C2,  IYEARS , JULD, IERR, IEND, IFREQ, IPC )
+      CALL BIAINP(LUDEF, NAMBIA, STNA, RNX3CODES, JCDBIAS, JPHBIAS,
+     &            PRDC, DP1P2, DP1C1, DP2C2,  IYEARS , JULD,
+     &            NRXDCB, LRXDCB, RXDCB, RXDCBS, IERR, IEND,
+     &            IFREQ, IPC )
+      IF( NRXDCB .EQ. 1 ) THEN
+       IF(RXDCBS(1,1).GT.0.D0) THEN
+        HORDION(1) = RXDCB(1,1)*.299792458D0
+c       HORDION(16) = (RXDCBS(1,1)*.299792458D0)**2
+c       HORDION(16) = 1.D20
+       END IF
+       IF(RXDCBS(2,1).GT.0.D0) THEN
+        HORDION(3) = RXDCB(2,1)*.299792458D0
+c       HORDION(22) = (RXDCBS(2,1)*.299792458D0)**2
+c       HORDION(22) = 1.D20
+       END IF
+       IF(RXDCBS(3,1).GT.0.D0) THEN
+        HORDION(11) = RXDCB(3,1)*.299792458D0
+c       HORDION(28) = (RXDCBS(3,1)*.299792458D0)**2
+c       HORDION(28) = 1.D20
+       END IF
+       IF(RXDCBS(4,1).GT.0.D0) THEN
+        HORDION(12) = RXDCB(4,1)*.299792458D0
+c       HORDION(34) = (RXDCBS(4,1)*.299792458D0)**2
+c       HORDION(34) = 1.D20
+       END IF
+      END IF
+c 2020Aug31 : extending to differential biases
 C SUPERSEDE WITH FIRST DAILY BIA FILE CONSISTENT WITH EPH
       IF( ICDBIAS .EQ. 2 ) THEN
-       CALL BIAINP(LUDEF, NAMBIAS, STNA, ICDBIAS, IPHBIAS, PRDC, DP1P2,
-     &             DP1C1, DP2C2,  IYEARS , JULD, IERR, IEND, IFREQ, IPC)
+c 2020Aug31 : extending to differential biases
+c      CALL BIAINP(LUDEF, NAMBIAS, STNA, ICDBIAS, IPHBIAS, PRDC, DP1P2,
+c    &             DP1C1, DP2C2,  IYEARS , JULD, IERR, IEND, IFREQ, IPC)
+       CALL BIAINP(LUDEF, NAMBIAS, STNA, RNX3CODES, ICDBIAS, IPHBIAS,
+     &             PRDC, DP1P2, DP1C1, DP2C2,  IYEARS , JULD,
+     &             NRXDCB, LRXDCB, RXDCB, RXDCBS, IERR, IEND,
+     &             IFREQ, IPC)
+c      IF( NRXDCB .EQ. 1 ) THEN
+c       IF(RXDCBS(1,1).GT.0.D0) THEN
+c        HORDION(1) = RXDCB(1,1)
+c        HORDION(16) = RXDCBS(1,1)**2
+c        HORDION(16) = 1.D20
+c       END IF
+c       IF(RXDCBS(2,1).GT.0.D0) THEN
+c        HORDION(3) = RXDCB(2,1)
+c        HORDION(22) = RXDCBS(2,1)**2
+c        HORDION(22) = 1.D20
+c       END IF
+c       IF(RXDCBS(3,1).GT.0.D0) THEN
+c        HORDION(11) = RXDCB(3,1)
+c        HORDION(28) = RXDCBS(3,1)**2
+c        HORDION(28) = 1.D20
+c       END IF
+c       IF(RXDCBS(4,1).GT.0.D0) THEN
+c        HORDION(12) = RXDCB(4,1)
+c        HORDION(34) = RXDCBS(4,1)**2
+c        HORDION(34) = 1.D20
+c       END IF
+c      END IF
+c 2020Aug31 : extending to differential biases
        IF( ICDBIAS.EQ.1 ) ICDBIAS=2
        IF( IPHBIAS.EQ.1 ) IPHBIAS=2
       ENDIF
@@ -19862,6 +20182,9 @@ C
       CHARACTER*14  EOHDR
       CHARACTER*40  STNA
       CHARACTER*20  ANTNAM,RECNAM
+c 2020Aug31 : extending to differential biases
+      CHARACTER*3 RNX3CODES(4,6)
+c 2020Aug31 : extending to differential biases
       INTEGER*4 I,J,NRECBLK,IYEAR,IMTH,IDAYM,IHR,IMN,IEP,NRSV
       INTEGER*4 NFREQ,IEOF,JULD,IWKDAY,NRECBUF
       INTEGER*4 IRECBUF, IFREQ
@@ -19974,6 +20297,9 @@ c!         WRITE(*,*) 'REWINDING LUMEA'
         REWIND(LUMEA)
           CALL HDRNX (LUMEA, IYEAR, IMTH, IDAYM, STNA,
      &                DUMMY , NOBTYP, IOBPOS, NFREQ, HDXYZH, 
+c 2020Aug31 : extending to differential biases
+     &                RNX3CODES,
+c 2020Aug31 : extending to differential biases
      &                ANTNAM, RECNAM, IFREQ, IEOF )
  550     CONTINUE
             READ(LUMEA,'(A80)',ERR=550, END=900) RECORD
@@ -20385,7 +20711,11 @@ C
 C
       SUBROUTINE RDHDR ( IFMT, LUMEA, IYEAR, IMTH, IDAYM, STNA,
      &                   OBSINT, NOBTYP, IOBPOS, DLAY12, NFREQ, IFREQ, 
-     &                   HDXYZH, ANTNAM, RECNAM, RIFRATE, IEOF )
+c 2020Aug31 : extending to differential biases
+     &                   HDXYZH, RNX3CODES, ANTNAM, RECNAM, RIFRATE,
+     &                   IEOF )
+c    &                   HDXYZH, ANTNAM, RECNAM, RIFRATE, IEOF )
+c 2020Aug31 : extending to differential biases
 C
 C     NAME:      RDHDR
 C
@@ -20412,6 +20742,9 @@ C *********************************************************************
 C
       IMPLICIT NONE
 C
+c 2020Aug31 : extending to differential biases
+      CHARACTER*3 RNX3CODES(4,6)
+c 2020Aug31 : extending to differential biases
       CHARACTER    STNA*40
       CHARACTER    ANTNAM*20
       CHARACTER    RECNAM*20
@@ -20481,8 +20814,12 @@ C
       IDAYM=0
       IF ( IFMT .EQ. 1 ) THEN
         CALL HDRNX (LUMEA, IYEAR, IMTH, IDAYM, STNA,
-     &              OBSINT, NOBTYP, IOBPOS, NFREQ, HDXYZH, ANTNAM,
-     &              RECNAM, IFREQ, IEOF )
+c 2020Aug31 : extending to differential biases
+     &              OBSINT, NOBTYP, IOBPOS, NFREQ, HDXYZH, RNX3CODES,
+     &              ANTNAM, RECNAM, IFREQ, IEOF )
+c    &              OBSINT, NOBTYP, IOBPOS, NFREQ, HDXYZH, ANTNAM,
+c    &              RECNAM, IFREQ, IEOF )
+c 2020Aug31 : extending to differential biases
 C       determine GLONASS inter channel rate (RIFRATE)
         DO I=1,40
          IF (ANTNAM.EQ. IFDCB(I)) RIFRATE= RIFDCB(I)
@@ -20530,8 +20867,12 @@ c!            WRITE(*,*) INTVL,INTLAST
               IF ( INTVL .EQ. INTLAST ) THEN
                   REWIND(LUMEA)
                   CALL HDRNX (LUMEA, IYEAR, IMTH, IDAYM, STNA,
-     &              OBSINT, NOBTYP, IOBPOS, NFREQ, HDXYZH, ANTNAM,
-     &              RECNAM, IFREQ, IEOF )
+c 2020Aug31 : extending to differential biases
+c    &              OBSINT, NOBTYP, IOBPOS, NFREQ, HDXYZH, ANTNAM,
+c    &              RECNAM, IFREQ, IEOF )
+     &              OBSINT, NOBTYP, IOBPOS, NFREQ, HDXYZH, RNX3CODES,
+     &              ANTNAM, RECNAM, IFREQ, IEOF )
+c 2020Aug31 : extending to differential biases
                   IF (INTVL .NE. 0) OBSINT=INTVL/1000.D0
                 ELSE
               INTLAST=INTVL
@@ -22285,7 +22626,10 @@ C
       INTEGER*4 ISVDCB(*)
       REAL*8    STNLAT,SLAT,ELAT,DLAT,SLON,ELON,DLON,TIMMAP,SLMHGT
       REAL*8    REFLAT,PI,AION(MAXLAT,*),RION(MAXLAT,*)
-      REAL*8    SVDCB(*),SVDCBS(*),RXDCB(*),RXDCBS(*)
+c 2020Aug29 : extending to multignss
+      REAL*8    SVDCB(*),SVDCBS(*),RXDCB(4,*),RXDCBS(4,*)
+c     REAL*8    SVDCB(*),SVDCBS(*),RXDCB(*),RXDCBS(*)
+c 2020Aug29 : extending to multignss
       INTEGER*4 MAPINT
 C
       CHARACTER*80  ADTLST(MAXADT)
@@ -22336,9 +22680,20 @@ C
           IF( I .LE. 32 ) THEN
             IPRN=I
             CONST="G"
-          ELSE
+c 2020Aug29 : extending to multignss
+c         ELSE
+          ELSE IF( I .LE. 64 ) THEN
+c 2020Aug29 : extending to multignss
             IPRN=I-32
             CONST='R'
+c 2020Aug29 : extending to multignss
+          ELSE IF( I .LE. 100 ) THEN
+            IPRN=I-64
+            CONST='E'
+          ELSE
+            IPRN=I-100
+            CONST='C'
+c 2020Aug29 : extending to multignss
           END IF
           IRC=GetInxSatBias( CONST, IPRN, DCB, DCBS )
           IF( IRC .EQ. 0 ) THEN
@@ -22354,9 +22709,48 @@ C
         IF( IRC .EQ. 0 ) THEN
           NRX=NRX+1
           IRXDCB(NRX)=STNA(1:4)
-          RXDCB(NRX)=DCB*.299792458D0
-          RXDCBS(NRX)=DCBS*.299792458D0
+c 2020Aug29 : extending to multignss
+c         RXDCB(NRX)=DCB*.299792458D0
+c         RXDCBS(NRX)=DCBS*.299792458D0
+          RXDCB(1,NRX)=DCB*.299792458D0
+          RXDCBS(1,NRX)=DCBS*.299792458D0
+c 2020Aug29 : extending to multignss
         ENDIF
+c 2020Aug29 : extending to multignss
+C GLONASS
+        IRC=GetInxStaBias( 'R', STNA(1:4), DCB, DCBS )
+        IF( IRC .EQ. 0 ) THEN
+         IF( NRX .EQ. 0 ) THEN
+          NRX=NRX+1
+         ELSE IF( IRXDCB(NRX).NE.STNA(1:4) ) THEN
+          NRX=NRX+1
+         END IF
+         RXDCB(2,NRX)=DCB*.299792458D0
+         RXDCBS(2,NRX)=DCBS*.299792458D0
+        ENDIF
+C GALILEO
+        IRC=GetInxStaBias( 'E', STNA(1:4), DCB, DCBS )
+        IF( IRC .EQ. 0 ) THEN
+         IF( NRX .EQ. 0 ) THEN
+          NRX=NRX+1
+         ELSE IF( IRXDCB(NRX).NE.STNA(1:4) ) THEN
+          NRX=NRX+1
+         END IF
+         RXDCB(3,NRX)=DCB*.299792458D0
+         RXDCBS(3,NRX)=DCBS*.299792458D0
+        ENDIF
+C BEIDOU
+        IRC=GetInxStaBias( 'C', STNA(1:4), DCB, DCBS )
+        IF( IRC .EQ. 0 ) THEN
+         IF( NRX .EQ. 0 ) THEN
+          NRX=NRX+1
+         ELSE IF( IRXDCB(NRX).NE.STNA(1:4) ) THEN
+          NRX=NRX+1
+         END IF
+         RXDCB(4,NRX)=DCB*.299792458D0
+         RXDCBS(4,NRX)=DCBS*.299792458D0
+        ENDIF
+c 2020Aug29 : extending to multignss
 C
 C-----------------------------------------------------------------------
 C     COMPUTE LIMITS OF LATITUDE BAND (+/- IBAND)
@@ -22607,7 +23001,10 @@ C
       INTEGER*4 IONFMT,MAPNB,MAXMAP,MAPINT,IONBAND,IRC,IDIR,IEXP
       INTEGER*4 ISVDCB(*)
       REAL*8    STNLAT,SLAT,ELAT,DLAT,SLON,ELON,DLON,TION,SLMHGT
-      REAL*8    REFLAT,PI,SVDCB(*),SVDCBS(*),RXDCB(*),RXDCBS(*)
+c 2020Aug29 : extending to multignss
+      REAL*8    REFLAT,PI,SVDCB(*),SVDCBS(*),RXDCB(4,*),RXDCBS(4,*)
+c     REAL*8    REFLAT,PI,SVDCB(*),SVDCBS(*),RXDCB(*),RXDCBS(*)
+c 2020Aug29 : extending to multignss
       REAL*8             AION(MAXLAT,*),RION(MAXLAT,*)
 C
       INTEGER*4 MAPTYP
@@ -30716,7 +31113,10 @@ C
 c 2020May12 : new code bias general input
      &           NAMBIA, NAMBIAS, STNA, ICDBIAS, IPHBIAS, ISVB, NAMSVB,
      &           IGNSS, ISVN, ISVBLK, DSVX, DSVY, DSVZ, DP1P2, DP1C1,
-     &           DP2C2, AVCLK, PRDC,
+c 2020Aug31 : extending to differential biases
+c    &           DP2C2, AVCLK, PRDC,
+     &           DP2C2, AVCLK, PRDC, RNX3CODES, HORDION,
+c 2020Aug31 : extending to differential biases
 c    &           ISVB, NAMSVB, IGNSS, ISVN, ISVBLK, 
 c    &           DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
 c 2020May12 : new code bias general input
@@ -30757,6 +31157,10 @@ c     CHARACTER*80 NAMDEF,NAMFLT,NAMSVB,NAMOLC,NAMPCV
       CHARACTER*80 NAMDEF,NAMFLT,NAMSVB,NAMBIA,NAMBIAS,NAMOLC,NAMPCV
       CHARACTER*40 STNA
 c 2020May12 : new code bias general input
+c 2020Aug31 : extending to differential biases
+      CHARACTER*3 RNX3CODES(4,6)
+      REAL*8      HORDION(*)
+c 2020Aug31 : extending to differential biases
       CHARACTER*20 ANTNAM
       CHARACTER*15 METSRC(7,2)
       INTEGER*4    ITRP(3)
@@ -31046,7 +31450,10 @@ C
 c 2020May12 : new code bias general input
      &            NAMBIA, NAMBIAS, STNA, ICDBIAS, IPHBIAS, ISVB, NAMSVB,
      &            IGNSS, ISVN, ISVBLK, DSVX, DSVY, DSVZ, DP1P2, DP1C1,
-     &            DP2C2, AVCLK, PRDC,
+c 2020Aug31 : extending to differential biases
+c    &            DP2C2, AVCLK, PRDC,
+     &            DP2C2, AVCLK, PRDC, RNX3CODES, HORDION,
+c 2020Aug31 : extending to differential biases
 c    &            ISVB, NAMSVB, IGNSS, ISVN, ISVBLK, 
 c    &            DSVX, DSVY, DSVZ, DP1P2, DP1C1, DP2C2, AVCLK,
 c 2020May12 : new code bias general input
@@ -34033,21 +34440,63 @@ C
 c 2020May12 : new code bias general input
 c     SUBROUTINE BIAINP(LU , NAMEPH, STNA, PRDC, DP1P2, DP1C1,
 c    &                  DP2C2, IY, IDOY,  IERR, IEND, IFREQ , IPC )
-      SUBROUTINE BIAINP(LU, NAMBIA, STNA, ICDBIAS, IPHBIAS, PRDC,
-     &                  DP1P2, DP1C1, DP2C2, IY, IDOY, IERR, IEND,
+c 2020Aug31 : extending to differential biases
+c     SUBROUTINE BIAINP(LU, NAMBIA, STNA, ICDBIAS, IPHBIAS, PRDC,
+c    &                  DP1P2, DP1C1, DP2C2, IY, IDOY, IERR, IEND,
+      SUBROUTINE BIAINP(LU, NAMBIA, STNA, RNX3CODES, ICDBIAS, IPHBIAS,
+     &                  PRDC, DP1P2, DP1C1, DP2C2, IY, IDOY,
+     &                  NRXDCB, LRXDCB, RXDCB, RXDCBS, IERR, IEND,
+c 2020Aug31 : extending to differential biases
      &                  IFREQ, IPC )
 c 2020May12 : new code bias general input
 C
-C Soubroutine reads the standard bia format file, computes the DCB 
+C Subroutine reads the standard bia format file, computes the DCB 
 C arrays DP1P2, DP1C1, DP2C2; as well as WL and NL ones in PRDC(9,*) and
 C PRDC(10,*), required for AR, provided that in the bia file the L* biases
-C are present and non zero!
-C
+C are present and their uncertainty non zero!
+C 
+C Both differential bias records (DSB) and undifferenced observation
+C bias records (OSB) are recognized and used to override satellite DP1C1,
+C DP2C2 and DP1P2 and NL and WL phase biases, as well as initialize
+C constellation-specific station P1P2 biases to be used in estimating vTEC
+C for high-order ionospheric corrections. In case of phase biases, ns
+C and cyc units are recognized.
+
 C This subroutine overwrites DCB's, WLs & NLs in the gpsppp.svb, gpspp.wsb
 C and gpsppp.nsb files, respectively; as well as the WLs in the clk file,
-C if present
+C if present. Subsequent calls to subroutine with different files
+C override values previously stored. The order of bias reads implemented is:
 C
-C Only GPS, GLONASS and GALILIEO are implemented. For Galileo
+C  1: gpsppp.svb                DP1P2,DP1C1,DP2C2       mandatory
+C                               no station DCB
+C  2: gpsppp.wsb, gpsppp.nsb    WLB,NLB                 optional
+C                               no station DCB
+C  3: DEF: gpsppp.bia           DP1P2,DP1C1,DP2C2       optional
+C                               station P1P2 biases
+C                               WLB,NLB
+C  4: <nameph>.bia              DP1P2,DP1C1,DP2C2       optional
+C                               station P1P2 biases
+C                               WLB,NLB
+C
+C Parameter RNX3CODES is used to match BIA file code and phase with
+C observed codes/phases. The parameter is initialized updated when
+C reading Rinex2 obtained from conversion from Rinex3 using application
+C gfzrnx which issues a table (see example below). If not present
+C RNX3CODES contains default values.
+C
+C RINEX 3 -> 2 TYPE CONVERSION DETAILS:                       COMMENT             
+C -------------------------------------                       COMMENT             
+C    G C1C -> C1                                              COMMENT
+C ...
+C    R C1C -> C1                                              COMMENT
+C ...
+C    E C1C -> C1                                              COMMENT
+C ...
+C    C C2I -> C2                                              COMMENT
+C
+C GPS, GLONASS, GALILEO and BEIDOU are implemented.
+C
+C For Galileo
 C E1/E5a frequency pair (the Pace option IFREQ = 3, or 5) is implemented as
 C this freq pair is currently used by all MGEX ACs as well as for Galileo AR.
 C
@@ -34056,19 +34505,26 @@ C (E1/(E5a+Eb)/2) are also implemented here, since they are not
 C currently used by MGEX ACs, so for a  onsistency, it should not be
 C used
 C
-C WARNING: 
-C Beidou frequencies/biases are not implemented !               
+C For Beidou C2I and C7I are implemented by default.
 C
-C Requires the Pace subroutines FREQ12,CHSFX and the input of:
-C NAMEPH - the name of orbit file, used to parce the bis file name
-C          (the bis file is assumed in the same dir and the same name as NAMEPH
-C           but with the extension 'bia')
+C Requires the Pace subroutines FREQ12
+C NAMBIA - the name of SINEX-BIAS formated file
+C STNA   - 4char station name to recognise:
+C            -station-specific satellite biases
+C            -constellation-specific station biases
 C IY,IDOY- Year and Day oy year of observation
+C RNX3CODES: Rinex3 3char codes conversion to 2char codes
 C IFREQ  - the dual freq option 
 C IPC    - print out option      
 C
 C *********************************************************************
       IMPLICIT NONE
+c 2020Aug31 : extending to differential biases
+      CHARACTER*3 RNX3CODES(4,6)
+      CHARACTER*4 LRXDCB(*)
+      REAL*8      RXDCB(4,*),RXDCBS(4,*)
+      INTEGER*4   NRXDCB
+c 2020Aug31 : extending to differential biases
 c 2020May12 : new code bias general input
 c     CHARACTER*80  NAMBIA, NAMEPH
       CHARACTER*80  NAMBIA
@@ -34077,6 +34533,14 @@ c 2020May12 : new code bias general input
       CHARACTER*40  STNA            
       CHARACTER*144 RECORD 
       CHARACTER*3 ICOD
+c 2020Aug29 : extending to differential biases
+     &           ,JCOD
+      CHARACTER*1 BIASTYPE
+      CHARACTER*4 UNITS
+c===========
+c     INTEGER*4 JPC
+c===========
+c 2020Aug29 : extending to differential biases
       INTEGER*4 LU, IERR, IEND, IDSVBIA(160), IFREQ, IPC, IPRN, IOS, I,
      &         IGNSS, IY, IDOY, ISV, IYS, IDS, ISS, IYE, IDE, ISE, MJD
       REAL*8  PRDC(10,*), DP1P2(*), DP1C1(*), DP2C2(*),
@@ -34091,11 +34555,20 @@ c    &        C5Q(160), C5X(160),C1P(160), C2P(160), C1X(160),
 c PHASE BIASES
 c    &        L1W(160), L2W(160), L1C(160), L5Q(160)
 c CODE BIASES
-      REAL*8  C1W(160,2), C2W(160,2),C1C(160,2), C2C(160,2), C2S(160,2),
-     &        C2L(160,2), C5Q(160,2), C5X(160,2),C1P(160,2), C2P(160,2),
-     &        C1X(160,2),
+c     REAL*8  C1W(160,2), C2W(160,2),C1C(160,2), C2C(160,2), C2S(160,2),
+c    &        C2L(160,2), C5Q(160,2), C5X(160,2),C1P(160,2), C2P(160,2),
+c    &        C1X(160,2),
+c 2020Aug29 : extending to differential biases
+      REAL*8  L1A(160,2), L2A(160,2), C1A(160,2), C1B(160,2),
+     &        C2A(160,2), C2B(160,2),
+     &        C1A_C1B(160,2), C2A_C2B(160,2), C1A_C2A(160,2),
+     &        C1B_C2A(160,2), C1A_C2B(160,2), C1B_C2B(160,2),
+     &        C11(160,2), C12(160,2), C21(160,2), C22(160,2),
+     &        C11_C12(160,2), C21_C22(160,2), C11_C21(160,2),
+     &        C12_C21(160,2), C11_C22(160,2), C12_C22(160,2) 
+c 2020Aug29 : extending to differential biases
 C PHASE BIASES
-     &        L1W(160,2), L2W(160,2), L1C(160,2), L5Q(160,2)
+c    &        L1W(160,2), L2W(160,2), L1C(160,2), L5Q(160,2)
 c 2020May12 : new code bias general input
 C
 c 2020May12 : new code bias general input
@@ -34103,6 +34576,13 @@ cC Parse the bia file name (the same dir as NAMEPH!)
 c     CALL CHSFX( NAMEPH, NAMBIA, '.bia') 
 c 2020May12 : new code bias general input
 C
+c 2020Aug29 : extending to differential biases
+      DATA BIASTYPE/' '/
+c===========
+c     JPC=IPC
+c     IF(IPC.LT.2)IPC=2
+c===========
+c 2020Aug29 : extending to differential biases
 c 2020May12 : new code bias general input
       IERR=1
       IEND=0
@@ -34123,34 +34603,80 @@ c      PRDC(I,9) = 0.D0
 c 2020May08 : wrong indexing
        IDSVBIA(I)= 0  
 c 2020May12 : new code bias general input
-       C1W(I,1)= 0.D0
-       C2W(I,1)= 0.D0
-       L1W(I,1)= 0.D0
-       L1C(I,1)= 0.D0
-       L2W(I,1)= 0.D0
-       L5Q(I,1)= 0.D0
-       C1C(I,1)= 0.D0
-       C1X(I,1)= 0.D0
-       C2C(I,1)= 0.D0
-       C2P(I,1)= 0.D0
-       C2S(I,1)= 0.D0
-       C2L(I,1)= 0.D0
-       C5Q(I,1)= 0.D0
-       C5X(I,1)= 0.D0
-       C1W(I,2)=-1.D9
-       C2W(I,2)=-1.D9
-       L1W(I,2)=-1.D9
-       L1C(I,2)=-1.D9
-       L2W(I,2)=-1.D9
-       L5Q(I,2)=-1.D9
-       C1C(I,2)=-1.D9
-       C1X(I,2)=-1.D9
-       C2C(I,2)=-1.D9
-       C2P(I,2)=-1.D9
-       C2S(I,2)=-1.D9
-       C2L(I,2)=-1.D9
-       C5Q(I,2)=-1.D9
-       C5X(I,2)=-1.D9
+c      C1W(I,1)= 0.D0
+c      C2W(I,1)= 0.D0
+c      L1W(I,1)= 0.D0
+c      L1C(I,1)= 0.D0
+c      L2W(I,1)= 0.D0
+c      L5Q(I,1)= 0.D0
+c      C1C(I,1)= 0.D0
+c      C1X(I,1)= 0.D0
+c      C2C(I,1)= 0.D0
+c      C2P(I,1)= 0.D0
+c      C2S(I,1)= 0.D0
+c      C2L(I,1)= 0.D0
+c      C5Q(I,1)= 0.D0
+c      C5X(I,1)= 0.D0
+c      C1W(I,2)=-1.D9
+c      C2W(I,2)=-1.D9
+c      L1W(I,2)=-1.D9
+c      L1C(I,2)=-1.D9
+c      L2W(I,2)=-1.D9
+c      L5Q(I,2)=-1.D9
+c      C1C(I,2)=-1.D9
+c      C1X(I,2)=-1.D9
+c      C2C(I,2)=-1.D9
+c      C2P(I,2)=-1.D9
+c      C2S(I,2)=-1.D9
+c      C2L(I,2)=-1.D9
+c      C5Q(I,2)=-1.D9
+c      C5X(I,2)=-1.D9
+c 2020Aug29 : extending to differential biases
+       L1A(I,1)= 0.D0
+       L2A(I,1)= 0.D0
+       C1A(I,1)= 0.D0
+       C1B(I,1)= 0.D0
+       C2A(I,1)= 0.D0
+       C2B(I,1)= 0.D0
+       C1A_C1B(I,1)= 0.D0
+       C2A_C2B(I,1)= 0.D0
+       C1A_C2A(I,1)= 0.D0
+       C1B_C2A(I,1)= 0.D0
+       C1A_C2B(I,1)= 0.D0
+       C1B_C2B(I,1)= 0.D0
+       C11(I,1)= 0.D0
+       C12(I,1)= 0.D0
+       C21(I,1)= 0.D0
+       C22(I,1)= 0.D0
+       C11_C12(I,1)= 0.D0
+       C21_C22(I,1)= 0.D0
+       C11_C21(I,1)= 0.D0
+       C12_C21(I,1)= 0.D0
+       C11_C22(I,1)= 0.D0
+       C12_C22(I,1)= 0.D0
+       L1A(I,2)=-1.D9
+       L2A(I,2)=-1.D9
+       C1A(I,2)=-1.D9
+       C1B(I,2)=-1.D9
+       C2A(I,2)=-1.D9
+       C2B(I,2)=-1.D9
+       C1A_C1B(I,2)=-1.D9
+       C2A_C2B(I,2)=-1.D9
+       C1A_C2A(I,2)=-1.D9
+       C1B_C2A(I,2)=-1.D9
+       C1A_C2B(I,2)=-1.D9
+       C1B_C2B(I,2)=-1.D9
+       C11(I,2)=-1.D9
+       C12(I,2)=-1.D9
+       C21(I,2)=-1.D9
+       C22(I,2)=-1.D9
+       C11_C12(I,2)=-1.D9
+       C21_C22(I,2)=-1.D9
+       C11_C21(I,2)=-1.D9
+       C12_C21(I,2)=-1.D9
+       C11_C22(I,2)=-1.D9
+       C12_C22(I,2)=-1.D9
+c 2020Aug29 : extending to differential biases
 c      C1W(I)= 0.D0
 c      C2W(I)= 0.D0
 c      L1W(I)= 0.D0
@@ -34168,14 +34694,31 @@ c 2020May12 : new code bias general input
       END DO
 C
 30    READ(LU,'(A144)',ERR=20,END=60 ) RECORD
-      IF(RECORD(2:4).NE.'OSB') GO TO 30     
+c 2020Aug29 : extending to differential biases
+c     IF(RECORD(2:4).NE.'OSB') GO TO 30     
+C SET BIASTYPE ON FIRST RECORD OTHERWISE FORMAT UNRECOGNIZED
+      IF(RECORD(1:6).EQ.'%=BIA ') BIASTYPE=RECORD(65:65)
+      IF( BIASTYPE.NE.'A'.AND.BIASTYPE.NE.'R') GO TO 20
+C SELECT ONLY PROPER BIAS ACCORDING TO HEADER INDICATION
+      IF((BIASTYPE.EQ.'A'.AND.RECORD(2:4).NE.'OSB').OR.
+     &   (BIASTYPE.EQ.'R'.AND.RECORD(2:4).NE.'DSB')) GO TO 30     
+C SELECT GENERAL OR STATION SPECIFIC
+c 2020Aug29 : extending to differential biases
       IF(RECORD(16:19).EQ.'    '.OR.RECORD(16:19).EQ.STNA(1:4)) THEN
-       READ(RECORD       ,40) ISV, ICOD, IYS, IDS, IYE, IDE,  
-     & BIAS, SBIAS
+c 2020Aug29 : extending to differential biases
+c      READ(RECORD       ,40) ISV, ICOD, IYS, IDS, IYE, IDE,  
+c    & BIAS, SBIAS
+       READ(RECORD       ,40) ISV, ICOD, JCOD, IYS, IDS, IYE, IDE,
+     &                        UNITS, BIAS, SBIAS
+c 2020Aug29 : extending to differential biases
 C MJD-NON STANDARD MJDAY BIAS DATUM - IGNORED
 c    & BIAS, SBIAS, MJD
-40    FORMAT(12X, I2, 11X, A3, 6X, 2(I5, 1X, I3, 6X), 15X, 2F12.4, 35X,
-     &        I6) 
+c 2020Aug29 : extending to differential biases
+c0    FORMAT(12X, I2, 11X, A3, 6X, 2(I5, 1X, I3, 6X), 15X, 2F12.4, 35X,
+c    &        I6) 
+40    FORMAT(12X, I2, 11X, A3, 2X, A3, 1X, 2(I5, 1X, I3, 6X), 1X, A4,
+     &       1X, E21.15, 1X, E11.6)
+c 2020Aug29 : extending to differential biases
 c 2020May12 : new code bias general input
 c     IGNSS=0
       IGNSS=-1
@@ -34196,15 +34739,23 @@ C
 c 2020May12 : new code bias general input
 c     IF(BIAS.NE.0.D0.AND.ISV.NE.0) THEN
 c      IF(IY.EQ.IYS.AND.IDOY.EQ.IDS) THEN
-      IF(                 ISV.NE.0) THEN
-       IF((IY.GT.IYS.OR.(IY.EQ.IYS.AND.IDOY.GE.IDS)) .AND.
-     &    (IY.LT.IYE.OR.(IY.EQ.IYE.AND.IDOY.LE.IDE))) THEN
+       IF(                 ISV.NE.0) THEN
+c 2020Aug29 : allowing open-ended interval
+c       IF((IY.GT.IYS.OR.(IY.EQ.IYS.AND.IDOY.GE.IDS)) .AND.
+c    &     (IY.LT.IYE.OR.(IY.EQ.IYE.AND.IDOY.LE.IDE))) THEN
+        IF((IY.GT.IYS.OR.(IY.EQ.IYS.AND.IDOY.GE.IDS)) .AND.
+     &     (IYE+IDE.EQ.0.OR.
+     &      IY.LT.IYE.OR.(IY.EQ.IYE.AND.IDOY.LE.IDE))) THEN
+c 2020Aug29 : allowing open-ended interval
 c 2020May12 : new code bias general input
-        ISV= ISV +IGNSS
-        IDSVBIA(ISV)= ISV
+         ISV= ISV +IGNSS
+         IDSVBIA(ISV)= ISV
 C
-        IF(IPC.GE.3) write(*,*)  iSV, ICOD, IYS, IDS, IYE, IDE,  
-     &  BIAS, SBIAS
+c 2020Aug29 : extending to differential biases
+c       IF(IPC.GE.3) write(*,*)  iSV, ICOD, IYS, IDS, IYE, IDE,  
+         IF(IPC.GE.3) write(*,*)  iSV, ICOD, JCOD, IYS, IDS, IYE, IDE,  
+c 2020Aug29 : extending to differential biases
+     &   BIAS, SBIAS
 C NON STANDAD
 c    & BIAS, SBIAS, MJD
 C
@@ -34235,58 +34786,362 @@ c         IF(ICOD.EQ.'C8Q') C5Q(ISV)= BIAS
 c         IF(ICOD.EQ.'C8X') C5X(ISV)= BIAS
 c         IF(ICOD.EQ.'L8Q') L5Q(ISV)= BIAS
 c        ENDIF
-        IF(ICOD.EQ.'C1W') C1W(ISV,1)= BIAS
-        IF(ICOD.EQ.'C2W') C2W(ISV,1)= BIAS
-        IF(ICOD.EQ.'L1W') L1W(ISV,1)= BIAS
-        IF(ICOD.EQ.'L1C') L1C(ISV,1)= BIAS
-        IF(ICOD.EQ.'L2W') L2W(ISV,1)= BIAS
-        IF(ICOD.EQ.'C1C') C1C(ISV,1)= BIAS
-        IF(ICOD.EQ.'C1P') C1P(ISV,1)= BIAS
-        IF(ICOD.EQ.'C1X') C1X(ISV,1)= BIAS
-        IF(ICOD.EQ.'C2C') C2C(ISV,1)= BIAS
-        IF(ICOD.EQ.'C2P') C2P(ISV,1)= BIAS
-        IF(ICOD.EQ.'C2S') C2S(ISV,1)= BIAS
-        IF(ICOD.EQ.'C5Q') C5Q(ISV,1)= BIAS
-        IF(ICOD.EQ.'C5X') C5X(ISV,1)= BIAS
-        IF(ICOD.EQ.'L5Q') L5Q(ISV,1)= BIAS
+c 2020Aug29 : extending to differential biases
+         IF(RECORD(12:12).EQ.'G') IGNSS=1
+         IF(RECORD(12:12).EQ.'R') IGNSS=2
+         IF(RECORD(12:12).EQ.'E') IGNSS=3
+         IF(RECORD(12:12).EQ.'C') IGNSS=4
+         IF(RECORD(2:4).EQ.'DSB') THEN
+          IF(C1A_C1B(ISV,2).LT.0.D0) THEN
+           IF(ICOD.EQ.RNX3CODES(IGNSS,3).AND.
+     &        JCOD.EQ.RNX3CODES(IGNSS,5)) THEN
+            C1A_C1B(ISV,1)= +BIAS
+            C1A_C1B(ISV,2)= SBIAS
+           ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,5).AND.
+     &             JCOD.EQ.RNX3CODES(IGNSS,3)) THEN
+            C1A_C1B(ISV,1)= -BIAS
+            C1A_C1B(ISV,2)= SBIAS
+           END IF
+          END IF
+          IF(C2A_C2B(ISV,2).LT.0.D0) THEN
+           IF(ICOD.EQ.RNX3CODES(IGNSS,4).AND.
+     &        JCOD.EQ.RNX3CODES(IGNSS,6)) THEN
+            C2A_C2B(ISV,1)= +BIAS
+            C2A_C2B(ISV,2)= SBIAS
+           ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,6).AND.
+     &             JCOD.EQ.RNX3CODES(IGNSS,4)) THEN
+            C2A_C2B(ISV,1)= -BIAS
+            C2A_C2B(ISV,2)= SBIAS
+           END IF
+          END IF
+          IF(C1A_C2A(ISV,2).LT.0.D0) THEN
+           IF(ICOD.EQ.RNX3CODES(IGNSS,3).AND.
+     &        JCOD.EQ.RNX3CODES(IGNSS,4)) THEN
+            C1A_C2A(ISV,1)= +BIAS
+            C1A_C2A(ISV,2)= SBIAS
+           ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,4).AND.
+     &             JCOD.EQ.RNX3CODES(IGNSS,3)) THEN
+            C1A_C2A(ISV,1)= -BIAS
+            C1A_C2A(ISV,2)= SBIAS
+           END IF
+          END IF
+          IF(C1B_C2A(ISV,2).LT.0.D0) THEN
+           IF(ICOD.EQ.RNX3CODES(IGNSS,5).AND.
+     &        JCOD.EQ.RNX3CODES(IGNSS,4)) THEN
+            C1B_C2A(ISV,1)= +BIAS
+            C1B_C2A(ISV,2)= SBIAS
+           ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,4).AND.
+     &             JCOD.EQ.RNX3CODES(IGNSS,5)) THEN
+            C1B_C2A(ISV,1)= -BIAS
+            C1B_C2A(ISV,2)= SBIAS
+           END IF
+          END IF
+          IF(C1A_C2B(ISV,2).LT.0.D0) THEN
+           IF(ICOD.EQ.RNX3CODES(IGNSS,3).AND.
+     &        JCOD.EQ.RNX3CODES(IGNSS,6)) THEN
+            C1A_C2B(ISV,1)= +BIAS
+            C1A_C2B(ISV,2)= SBIAS
+           ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,6).AND.
+     &             JCOD.EQ.RNX3CODES(IGNSS,3)) THEN
+            C1A_C2B(ISV,1)= -BIAS
+            C1A_C2B(ISV,2)= SBIAS
+           END IF
+          END IF
+          IF(C1B_C2B(ISV,2).LT.0.D0) THEN
+           IF(ICOD.EQ.RNX3CODES(IGNSS,5).AND.
+     &        JCOD.EQ.RNX3CODES(IGNSS,6)) THEN
+            C1B_C2B(ISV,1)= +BIAS
+            C1B_C2B(ISV,2)= SBIAS
+           ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,6).AND.
+     &             JCOD.EQ.RNX3CODES(IGNSS,5)) THEN
+            C1B_C2B(ISV,1)= -BIAS
+            C1B_C2B(ISV,2)= SBIAS
+           END IF
+          END IF
+         ELSE
+          IF(ICOD(1:1).EQ.'L'.AND.UNITS.EQ.'cyc ')
+     &     CALL FREQ12( ISV, F1, F2, F1S, F2S, F12S, F1ION, F2ION,
+     &                AL1, AL2, AL3, AL4, IFREQ )
+          IF(ICOD.EQ.RNX3CODES(IGNSS,1)) THEN
+           IF(UNITS.EQ.'ns  ') THEN
+            L1A(ISV,1)=  BIAS
+            L1A(ISV,2)= SBIAS
+           ELSE
+            L1A(ISV,1)=  BIAS/F1*1.D9
+            L1A(ISV,2)= SBIAS/F1*1.D9
+           ENDIF
+          ENDIF
+          IF(ICOD.EQ.RNX3CODES(IGNSS,2)) THEN
+           IF(UNITS.EQ.'ns  ') THEN
+            L2A(ISV,1)=  BIAS
+            L2A(ISV,2)= SBIAS
+           ELSE
+            L2A(ISV,1)=  BIAS/F1*1.D9
+            L2A(ISV,2)= SBIAS/F1*1.D9
+           ENDIF
+          ENDIF
+          IF(ICOD.EQ.RNX3CODES(IGNSS,3)) THEN
+           C1A(ISV,1)=  BIAS
+           C1A(ISV,2)= SBIAS
+          ENDIF
+          IF(ICOD.EQ.RNX3CODES(IGNSS,4)) THEN
+           C2A(ISV,1)=  BIAS
+           C2A(ISV,2)= SBIAS
+          ENDIF
+          IF(ICOD.EQ.RNX3CODES(IGNSS,5)) THEN
+           C1B(ISV,1)=  BIAS
+           C1B(ISV,2)= SBIAS
+          ENDIF
+          IF(ICOD.EQ.RNX3CODES(IGNSS,6)) THEN
+           C2B(ISV,1)=  BIAS
+           C2B(ISV,2)= SBIAS
+          ENDIF
+c 2020Aug29 : extending to differential biases
+c         IF(ICOD.EQ.'C1W') C1W(ISV,1)= BIAS
+c         IF(ICOD.EQ.'C2W') C2W(ISV,1)= BIAS
+c 2020Aug29 : extending to differential biases
+c         IF(ICOD.EQ.'L1W') L1W(ISV,1)= BIAS
+c         IF(ICOD.EQ.'L1C') L1C(ISV,1)= BIAS
+c         IF(ICOD.EQ.'L2W') L2W(ISV,1)= BIAS
+c         IF(ICOD.EQ.'L1W') THEN
+c          IF(UNITS.EQ.'ns  ') THEN
+c           L1W(ISV,1)= BIAS
+c          ELSE IF(UNITS.EQ.'cyc ') THEN
+c           L1W(ISV,1)= BIAS/F1*1.D9
+c          END IF
+c         ENDIF
+c         IF(ICOD.EQ.'L1C') THEN
+c          IF(UNITS.EQ.'ns  ') THEN
+c           L1C(ISV,1)= BIAS
+c          ELSE IF(UNITS.EQ.'cyc ') THEN
+c           L1C(ISV,1)= BIAS/F1*1.D9
+c          END IF
+c         ENDIF
+c         IF(ICOD.EQ.'L2W') THEN
+c          IF(UNITS.EQ.'ns  ') THEN
+c           L2W(ISV,1)= BIAS
+c          ELSE IF(UNITS.EQ.'cyc ') THEN
+c           L2W(ISV,1)= BIAS/F2*1.D9
+c          END IF
+c         ENDIF
+c 2020Aug29 : extending to differential biases
+c         IF(ICOD.EQ.'C1C') C1C(ISV,1)= BIAS
+c         IF(ICOD.EQ.'C1P') C1P(ISV,1)= BIAS
+c         IF(ICOD.EQ.'C1X') C1X(ISV,1)= BIAS
+c         IF(ICOD.EQ.'C2C') C2C(ISV,1)= BIAS
+c         IF(ICOD.EQ.'C2P') C2P(ISV,1)= BIAS
+c         IF(ICOD.EQ.'C2S') C2S(ISV,1)= BIAS
+c         IF(ICOD.EQ.'C5Q') C5Q(ISV,1)= BIAS
+c         IF(ICOD.EQ.'C5X') C5X(ISV,1)= BIAS
+c 2020Aug29 : extending to differential biases
+c         IF(ICOD.EQ.'L5Q') L5Q(ISV,1)= BIAS
+c         IF(ICOD.EQ.'L5Q') THEN
+c          IF(UNITS.EQ.'ns  ') THEN
+c           L5Q(ISV,1)= BIAS
+c          ELSE IF(UNITS.EQ.'cyc ') THEN
+c           L5Q(ISV,1)= BIAS/F2*1.D9
+c          END IF
+c         ENDIF
+c 2020Aug29 : extending to differential biases
+c
+c         IF(ICOD.EQ.'C1W') C1W(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'C2W') C2W(ISV,2)= SBIAS
+c 2020Aug29 : extending to differential biases
+c         IF(ICOD.EQ.'L1W') L1W(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'L1C') L1C(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'L2W') L2W(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'L1W') THEN
+c          IF(UNITS.EQ.'ns  ') THEN
+c           L1W(ISV,2)= SBIAS
+c          ELSE IF(UNITS.EQ.'cyc ') THEN
+c           L1W(ISV,2)= SBIAS/F1*1.D9
+c          END IF
+c         ENDIF
+c         IF(ICOD.EQ.'L1C') THEN
+c          IF(UNITS.EQ.'ns  ') THEN
+c           L1C(ISV,2)= SBIAS
+c          ELSE IF(UNITS.EQ.'cyc ') THEN
+c           L1C(ISV,2)= SBIAS/F1*1.D9
+c          END IF
+c         ENDIF
+c         IF(ICOD.EQ.'L2W') THEN
+c          IF(UNITS.EQ.'ns  ') THEN
+c           L2W(ISV,2)= SBIAS
+c          ELSE IF(UNITS.EQ.'cyc ') THEN
+c           L2W(ISV,2)= SBIAS/F2*1.D9
+c          END IF
+c         ENDIF
+c 2020Aug29 : extending to differential biases
+c         IF(ICOD.EQ.'C1C') C1C(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'C1P') C1P(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'C1X') C1X(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'C2C') C2C(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'C2P') C2P(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'C2S') C2S(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'C5Q') C5Q(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'C5X') C5X(ISV,2)= SBIAS
+c 2020Aug29 : extending to differential biases
+c         IF(ICOD.EQ.'L5Q') L5Q(ISV,2)= SBIAS
+c         IF(ICOD.EQ.'L5Q') THEN
+c          IF(UNITS.EQ.'ns  ') THEN
+c           L5Q(ISV,2)= SBIAS
+c          ELSE IF(UNITS.EQ.'cyc ') THEN
+c           L5Q(ISV,2)= SBIAS/F2*1.D9
+c          END IF
+c         ENDIF
+c 2020Aug29 : extending to differential biases
+c
+c         IF(IFREQ.EQ.7) THEN
+c          IF(ICOD.EQ.'C7Q') C5Q(ISV,1)= BIAS
+c          IF(ICOD.EQ.'C7X') C5X(ISV,1)= BIAS
+c 2020Aug29 : extending to differential biases
+c          IF(ICOD.EQ.'L7Q') L5Q(ISV,1)= BIAS
+c          IF(ICOD.EQ.'L7Q') THEN
+c           IF(UNITS.EQ.'ns  ') THEN
+c            L5Q(ISV,1)= BIAS
+c           ELSE IF(UNITS.EQ.'cyc ') THEN
+c            L5Q(ISV,1)= BIAS/F2*1.D9
+c           END IF
+c          ENDIF
+c 2020Aug29 : extending to differential biases
+c
+c          IF(ICOD.EQ.'C7Q') C5Q(ISV,2)= SBIAS
+c          IF(ICOD.EQ.'C7X') C5X(ISV,2)= SBIAS
+c 2020Aug29 : extending to differential biases
+c          IF(ICOD.EQ.'L7Q') L5Q(ISV,2)= SBIAS
+c          IF(ICOD.EQ.'L7Q') THEN
+c           IF(UNITS.EQ.'ns  ') THEN
+c            L5Q(ISV,2)= SBIAS
+c           ELSE IF(UNITS.EQ.'cyc ') THEN
+c            L5Q(ISV,2)= SBIAS/F2*1.D9
+c           END IF
+c          ENDIF
+c 2020Aug29 : extending to differential biases
+c         ENDIF
 C
-        IF(ICOD.EQ.'C1W') C1W(ISV,2)= SBIAS
-        IF(ICOD.EQ.'C2W') C2W(ISV,2)= SBIAS
-        IF(ICOD.EQ.'L1W') L1W(ISV,2)= SBIAS
-        IF(ICOD.EQ.'L1C') L1C(ISV,2)= SBIAS
-        IF(ICOD.EQ.'L2W') L2W(ISV,2)= SBIAS
-        IF(ICOD.EQ.'C1C') C1C(ISV,2)= SBIAS
-        IF(ICOD.EQ.'C1P') C1P(ISV,2)= SBIAS
-        IF(ICOD.EQ.'C1X') C1X(ISV,2)= SBIAS
-        IF(ICOD.EQ.'C2C') C2C(ISV,2)= SBIAS
-        IF(ICOD.EQ.'C2P') C2P(ISV,2)= SBIAS
-        IF(ICOD.EQ.'C2S') C2S(ISV,2)= SBIAS
-        IF(ICOD.EQ.'C5Q') C5Q(ISV,2)= SBIAS
-        IF(ICOD.EQ.'C5X') C5X(ISV,2)= SBIAS
-        IF(ICOD.EQ.'L5Q') L5Q(ISV,2)= SBIAS
+c         IF(IFREQ.EQ.8) THEN
+c          IF(ICOD.EQ.'C8Q') C5Q(ISV,1)= BIAS
+c          IF(ICOD.EQ.'C8X') C5X(ISV,1)= BIAS
+c 2020Aug29 : extending to differential biases
+c          IF(ICOD.EQ.'L8Q') L5Q(ISV,1)= BIAS
+c          IF(ICOD.EQ.'L8Q') THEN
+c           IF(UNITS.EQ.'ns  ') THEN
+c            L5Q(ISV,1)= BIAS
+c           ELSE IF(UNITS.EQ.'cyc ') THEN
+c            L5Q(ISV,1)= BIAS/F2*1.D9
+c           END IF
+c          ENDIF
+c 2020Aug29 : extending to differential biases
 C
-         IF(IFREQ.EQ.7) THEN
-          IF(ICOD.EQ.'C7Q') C5Q(ISV,1)= BIAS
-          IF(ICOD.EQ.'C7X') C5X(ISV,1)= BIAS
-          IF(ICOD.EQ.'L7Q') L5Q(ISV,1)= BIAS
-C
-          IF(ICOD.EQ.'C7Q') C5Q(ISV,2)= SBIAS
-          IF(ICOD.EQ.'C7X') C5X(ISV,2)= SBIAS
-          IF(ICOD.EQ.'L7Q') L5Q(ISV,2)= SBIAS
-         ENDIF
-C
-         IF(IFREQ.EQ.8) THEN
-          IF(ICOD.EQ.'C8Q') C5Q(ISV,1)= BIAS
-          IF(ICOD.EQ.'C8X') C5X(ISV,1)= BIAS
-          IF(ICOD.EQ.'L8Q') L5Q(ISV,1)= BIAS
-C
-          IF(ICOD.EQ.'C8Q') C5Q(ISV,2)= SBIAS
-          IF(ICOD.EQ.'C8X') C5X(ISV,2)= SBIAS
-          IF(ICOD.EQ.'L8Q') L5Q(ISV,2)= SBIAS
+c          IF(ICOD.EQ.'C8Q') C5Q(ISV,2)= SBIAS
+c          IF(ICOD.EQ.'C8X') C5X(ISV,2)= SBIAS
+c 2020Aug29 : extending to differential biases
+c          IF(ICOD.EQ.'L8Q') L5Q(ISV,2)= SBIAS
+c          IF(ICOD.EQ.'L8Q') THEN
+c           IF(UNITS.EQ.'ns  ') THEN
+c            L5Q(ISV,2)= SBIAS
+c           ELSE IF(UNITS.EQ.'cyc ') THEN
+c            L5Q(ISV,2)= SBIAS/F2*1.D9
+c           END IF
+c          ENDIF
+c         ENDIF
+c 2020Aug29 : extending to differential biases
          ENDIF
 c 2020May12 : new code bias general input
+        ENDIF
+c 2020Aug29 : extending to differential biases
+       ELSE IF(RECORD(16:19).EQ.STNA(1:4)) THEN
+        IF(RECORD(12:12).EQ.'G') IGNSS=1
+        IF(RECORD(12:12).EQ.'R') IGNSS=2
+        IF(RECORD(12:12).EQ.'E') IGNSS=3
+        IF(RECORD(12:12).EQ.'C') IGNSS=4
+        IF(RECORD(2:4).EQ.'DSB') THEN
+         IF(C11_C12(IGNSS,2).LT.0.D0) THEN
+          IF(ICOD.EQ.RNX3CODES(IGNSS,3).AND.
+     &       JCOD.EQ.RNX3CODES(IGNSS,5)) THEN
+           C11_C12(IGNSS,1)= +BIAS
+           C11_C12(IGNSS,2)= SBIAS
+          ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,5).AND.
+     &            JCOD.EQ.RNX3CODES(IGNSS,3)) THEN
+           C11_C12(IGNSS,1)= -BIAS
+           C11_C12(IGNSS,2)= SBIAS
+          END IF
+         END IF
+         IF(C21_C22(IGNSS,2).LT.0.D0) THEN
+          IF(ICOD.EQ.RNX3CODES(IGNSS,4).AND.
+     &       JCOD.EQ.RNX3CODES(IGNSS,6)) THEN
+           C21_C22(IGNSS,1)= +BIAS
+           C21_C22(IGNSS,2)= SBIAS
+          ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,6).AND.
+     &            JCOD.EQ.RNX3CODES(IGNSS,4)) THEN
+           C21_C22(IGNSS,1)= -BIAS
+           C21_C22(IGNSS,2)= SBIAS
+          END IF
+         END IF
+         IF(C11_C21(IGNSS,2).LT.0.D0) THEN
+          IF(ICOD.EQ.RNX3CODES(IGNSS,3).AND.
+     &       JCOD.EQ.RNX3CODES(IGNSS,4)) THEN
+           C11_C21(IGNSS,1)= +BIAS
+           C11_C21(IGNSS,2)= SBIAS
+          ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,4).AND.
+     &            JCOD.EQ.RNX3CODES(IGNSS,3)) THEN
+           C11_C21(IGNSS,1)= -BIAS
+           C11_C21(IGNSS,2)= SBIAS
+          END IF
+         END IF
+         IF(C12_C21(IGNSS,2).LT.0.D0) THEN
+          IF(ICOD.EQ.RNX3CODES(IGNSS,5).AND.
+     &       JCOD.EQ.RNX3CODES(IGNSS,4)) THEN
+           C12_C21(IGNSS,1)= +BIAS
+           C12_C21(IGNSS,2)= SBIAS
+          ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,4).AND.
+     &            JCOD.EQ.RNX3CODES(IGNSS,5)) THEN
+           C12_C21(IGNSS,1)= -BIAS
+           C12_C21(IGNSS,2)= SBIAS
+          END IF
+         END IF
+         IF(C11_C22(IGNSS,2).LT.0.D0) THEN
+          IF(ICOD.EQ.RNX3CODES(IGNSS,3).AND.
+     &       JCOD.EQ.RNX3CODES(IGNSS,6)) THEN
+           C11_C22(IGNSS,1)= +BIAS
+           C11_C22(IGNSS,2)= SBIAS
+          ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,6).AND.
+     &            JCOD.EQ.RNX3CODES(IGNSS,3)) THEN
+           C11_C22(IGNSS,1)= -BIAS
+           C11_C22(IGNSS,2)= SBIAS
+          END IF
+         END IF
+         IF(C12_C22(IGNSS,2).LT.0.D0) THEN
+          IF(ICOD.EQ.RNX3CODES(IGNSS,5).AND.
+     &       JCOD.EQ.RNX3CODES(IGNSS,6)) THEN
+           C12_C22(IGNSS,1)= +BIAS
+           C12_C22(IGNSS,2)= SBIAS
+          ELSE IF(ICOD.EQ.RNX3CODES(IGNSS,6).AND.
+     &            JCOD.EQ.RNX3CODES(IGNSS,5)) THEN
+           C12_C22(IGNSS,1)= -BIAS
+           C12_C22(IGNSS,2)= SBIAS
+          END IF
+         END IF
+        ELSE
+         IF(ICOD.EQ.RNX3CODES(IGNSS,3)) THEN
+          C11(IGNSS,1)=  BIAS
+          C11(IGNSS,2)= SBIAS
+         ENDIF
+         IF(ICOD.EQ.RNX3CODES(IGNSS,4)) THEN
+          C21(IGNSS,1)=  BIAS
+          C21(IGNSS,2)= SBIAS
+         ENDIF
+         IF(ICOD.EQ.RNX3CODES(IGNSS,5)) THEN
+          C12(IGNSS,1)=  BIAS
+          C12(IGNSS,2)= SBIAS
+         ENDIF
+         IF(ICOD.EQ.RNX3CODES(IGNSS,6)) THEN
+          C22(IGNSS,1)=  BIAS
+          C22(IGNSS,2)= SBIAS
+         ENDIF
+        END IF
+c 2020Aug29 : extending to differential biases
        ENDIF
-      ENDIF
       ENDIF
       GO TO 30
 C COMPUTE DCB's & WSB's , NSB's
@@ -34296,6 +35151,105 @@ c 2020May12 : new code bias general input
       ICDBIAS=0
       IPHBIAS=0
 c 2020May12 : new code bias general input
+c 2020Aug29 : extending to differential biases
+      NRXDCB=0
+      DO IGNSS=1,4
+        IF(C11_C21(IGNSS,2).GE.0.D0.OR.
+     &     C12_C21(IGNSS,2).GE.0.D0.OR.
+     &     C11_C22(IGNSS,2).GE.0.D0.OR.
+     &     C12_C22(IGNSS,2).GE.0.D0.OR.
+     &     C11_C12(IGNSS,2).GE.0.D0.OR.
+     &     C21_C22(IGNSS,2).GE.0.D0) THEN
+         ICDBIAS=1
+         IF(C11_C21(IGNSS,2).GE.0.D0.AND.
+     &      DABS(C11_C21(IGNSS,1)).GT.1.D-5) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "RXDCB",IGNSS,RXDCB(IGNSS,1),'==>',
+     &               C11_C21(IGNSS,1)
+          NRXDCB=1
+          LRXDCB(1)=STNA(1:4)
+          RXDCB(IGNSS,1)=C11_C21(IGNSS,1)
+          RXDCBS(IGNSS,1)=C11_C21(IGNSS,2)
+         ELSE IF(C11_C22(IGNSS,2).GE.0.D0.AND.
+     &           C21_C22(IGNSS,2).GE.0.D0.AND.
+     &      DABS(C11_C22(IGNSS,1)-C21_C22(IGNSS,1)).GT.1.D-5) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "RXDCB",IGNSS,RXDCB(IGNSS,1),'==>',
+     &               C11_C22(IGNSS,1)-C21_C22(IGNSS,1)
+          NRXDCB=1
+          LRXDCB(1)=STNA(1:4)
+          RXDCB(IGNSS,1)=C11_C22(IGNSS,1)-C21_C22(IGNSS,1)
+          RXDCBS(IGNSS,1)=SQRT(C11_C22(IGNSS,1)**2+C21_C22(IGNSS,1)**2)
+         ELSE IF(C12_C21(IGNSS,2).GE.0.D0.AND.
+     &           C11_C12(IGNSS,2).GE.0.D0.AND.
+     &      DABS(C12_C21(IGNSS,1)+C11_C12(IGNSS,1)).GT.1.D-5) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "RXDCB",IGNSS,RXDCB(IGNSS,1),'==>',
+     &               C12_C21(IGNSS,1)+C11_C12(IGNSS,1)
+          NRXDCB=1
+          LRXDCB(1)=STNA(1:4)
+          RXDCB(IGNSS,1)=C12_C21(IGNSS,1)+C11_C12(IGNSS,1)
+          RXDCBS(IGNSS,1)=SQRT(C12_C21(IGNSS,1)**2+C11_C12(IGNSS,1)**2)
+         ELSE IF(C12_C22(IGNSS,2).GE.0.D0.AND.
+     &           C11_C12(IGNSS,2).GE.0.D0.AND.
+     &           C21_C22(IGNSS,2).GE.0.D0.AND.
+     &      DABS(C12_C21(IGNSS,1)+C11_C12(IGNSS,1)
+     &                          -C21_C22(IGNSS,1)).GT.1.D-5) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "RXDCB",IGNSS,RXDCB(IGNSS,1),'==>',
+     &               C12_C22(IGNSS,1)+C11_C12(IGNSS,1)-C21_C22(IGNSS,1)
+          NRXDCB=1
+          LRXDCB(1)=STNA(1:4)
+          RXDCB(IGNSS,1)=C12_C22(IGNSS,1)+C11_C12(IGNSS,1)
+     &                                   -C21_C22(IGNSS,1)
+          RXDCB(IGNSS,1)=SQRT(C12_C22(IGNSS,1)**2+C11_C12(IGNSS,1)**2
+     &                                           +C21_C22(IGNSS,1)**2)
+         END IF
+C NO STATION-SPECIFIC DP1C1 OR DP2C2 FOR NOW
+C        IF(C11_C12(IGNSS,2).GE.0.D0) THEN
+C         IF(IPC.GE.2)
+C    &    write(*,*) "DP1C1",IGNSS,DP1C1(IGNSS),'==>',
+C    &               C11_C12(IGNSS,1)
+C         DP1C1(IGNSS)=C11_C12(IGNSS,1)
+C        END IF
+C        IF(C21_C22(IGNSS,2).GE.0.D0) THEN
+C         IF(IPC.GE.2)
+C    &    write(*,*) "DP2C2",IGNSS,DP2C2(IGNSS),'==>',
+C    &               C21_C22(IGNSS,1)
+C         DP2C2(IGNSS)=C21_C22(IGNSS,1)
+C        END IF
+        ENDIF
+        IF(C11(IGNSS,2)+C21(IGNSS,2).GE.0.D0.OR.
+     &     C11(IGNSS,2)+C12(IGNSS,2).GE.0.D0.OR.
+     &     C21(IGNSS,2)+C22(IGNSS,2).GE.0.D0) THEN
+         ICDBIAS=1
+         IF(C11(IGNSS,2)+C21(IGNSS,2).GE.0.D0.AND.
+     &      C11(IGNSS,1).NE.C21(IGNSS,1).AND.
+     &      DABS(C11(IGNSS,1)-C21(IGNSS,1)).GT.1.D-5) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "RXDCB",IGNSS,RXDCB(IGNSS,1),'==>',
+     &               C11(IGNSS,1)-C21(IGNSS,1)
+          NRXDCB=1
+          LRXDCB(1)=STNA(1:4)
+          RXDCB(IGNSS,1)=C11(IGNSS,1)-C21(IGNSS,1)
+          RXDCBS(IGNSS,1)=SQRT(C11(IGNSS,1)**2+C21(IGNSS,1)**2)
+         ENDIF
+C NO STATION-SPECIFIC DP1C1 OR DP2C2 FOR NOW
+C        IF(C11(IGNSS,2)+C12(IGNSS,2).GE.0.D0) THEN
+C         IF(IPC.GE.2)
+C    &    write(*,*) "DP1C1",IGNSS,DP1C1(IGNSS),'==>',
+C    &               C11(IGNSS,1)-C12(IGNSS,1)
+C         DP1C1(IGNSS)=C11(IGNSS,1)-C12(IGNSS,1)
+C        ENDIF
+C        IF(C21(IGNSS,2)+C22(IGNSS,2).GE.0.D0) THEN
+C         IF(IPC.GE.2)
+C    &    write(*,*) "DP2C2",IGNSS,DP2C2(IGNSS),'==>',
+C    &               C21(IGNSS,1)-C22(IGNSS,1)
+C         DP2C2(IGNSS)=C21(IGNSS,1)-C22(IGNSS,1)
+C        ENDIF
+        ENDIF
+      END DO
+c 2020Aug29 : extending to differential biases
       DO I=1, 160
 C GET GNSS FREQs
        IF(I.EQ.1.OR.I.EQ.33.OR.I.EQ.65.OR.I.EQ.101)
@@ -34303,8 +35257,104 @@ C GET GNSS FREQs
      &                AL1, AL2, AL3, AL4, IFREQ )
        IPRN = IDSVBIA(I)
        IF(IPRN.NE. 0) THEN
+c 2020Aug29 : extending to differential biases
+        IF(C1A_C2A(IPRN,2).GE.0.D0.OR.
+     &     C1B_C2A(IPRN,2).GE.0.D0.OR.
+     &     C1A_C2B(IPRN,2).GE.0.D0.OR.
+     &     C1B_C2B(IPRN,2).GE.0.D0.OR.
+     &     C1A_C1B(IPRN,2).GE.0.D0.OR.
+     &     C2A_C2B(IPRN,2).GE.0.D0) THEN
+         ICDBIAS=1
+         IF(C1A_C2A(IPRN,2).GE.0.D0.AND.
+     &      DABS(C1A_C2A(IPRN,1)).GT.1.D-5) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "DP1P2",IPRN,DP1P2(IPRN),'==>',
+     &               C1A_C2A(IPRN,1)
+          DP1P2(IPRN)=C1A_C2A(IPRN,1)
+         ELSE IF(C1A_C2B(IPRN,2).GE.0.D0.AND.
+     &           C2A_C2B(IPRN,2).GE.0.D0.AND.
+     &      DABS(C1A_C2B(IPRN,1)-C2A_C2B(IPRN,1)).GT.1.D-5) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "DP1P2",IPRN,DP1P2(IPRN),'==>',
+     &               C1A_C2B(IPRN,1)-C2A_C2B(IPRN,1)
+          DP1P2(IPRN)=C1A_C2B(IPRN,1)-C2A_C2B(IPRN,1)
+         ELSE IF(C1B_C2A(IPRN,2).GE.0.D0.AND.
+     &           C1A_C1B(IPRN,2).GE.0.D0.AND.
+     &      DABS(C1B_C2A(IPRN,1)+C1A_C1B(IPRN,1)).GT.1.D-5) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "DP1P2",IPRN,DP1P2(IPRN),'==>',
+     &               C1B_C2A(IPRN,1)+C1A_C1B(IPRN,1)
+          DP1P2(IPRN)=C1B_C2A(IPRN,1)+C1A_C1B(IPRN,1)
+         ELSE IF(C1B_C2B(IPRN,2).GE.0.D0.AND.
+     &           C1A_C1B(IPRN,2).GE.0.D0.AND.
+     &           C2A_C2B(IPRN,2).GE.0.D0.AND.
+     &      DABS(C1B_C2A(IPRN,1)+C1A_C1B(IPRN,1)
+     &                          -C2A_C2B(IPRN,1)).GT.1.D-5) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "DP1P2",IPRN,DP1P2(IPRN),'==>',
+     &               C1B_C2B(IPRN,1)+C1A_C1B(IPRN,1)-C2A_C2B(IPRN,1)
+          DP1P2(IPRN)=C1B_C2B(IPRN,1)+C1A_C1B(IPRN,1)-C2A_C2B(IPRN,1)
+         END IF
+         IF(C1A_C1B(IPRN,2).GE.0.D0) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "DP1C1",IPRN,DP1C1(IPRN),'==>',
+     &               C1A_C1B(IPRN,1)
+          DP1C1(IPRN)=C1A_C1B(IPRN,1)
+         END IF
+         IF(C2A_C2B(IPRN,2).GE.0.D0) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "DP2C2",IPRN,DP2C2(IPRN),'==>',
+     &               C2A_C2B(IPRN,1)
+          DP2C2(IPRN)=C2A_C2B(IPRN,1)
+         END IF
+        ENDIF
+        IF(C1A(IPRN,2)+C2A(IPRN,2).GE.0.D0.OR.
+     &     C1A(IPRN,2)+C1B(IPRN,2).GE.0.D0.OR.
+     &     C2A(IPRN,2)+C2B(IPRN,2).GE.0.D0) THEN
+         ICDBIAS=1
+         IF(C1A(IPRN,2)+C2A(IPRN,2).GE.0.D0.AND.
+     &      DABS(C1A(IPRN,1)-C2A(IPRN,1)).GT.1.D-5) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "DP1P2",IPRN,DP1P2(IPRN),'==>',
+     &               C1A(IPRN,1)-C2A(IPRN,1)
+          DP1P2(IPRN)=C1A(IPRN,1)-C2A(IPRN,1)
+         ENDIF
+         IF(C1A(IPRN,2)+C1B(IPRN,2).GE.0.D0) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "DP1C1",IPRN,DP1C1(IPRN),'==>',
+     &               C1A(IPRN,1)-C1B(IPRN,1)
+          DP1C1(IPRN)=C1A(IPRN,1)-C1B(IPRN,1)
+         ENDIF
+         IF(C2A(IPRN,2)+C2B(IPRN,2).GE.0.D0) THEN
+          IF(IPC.GE.2)
+     &    write(*,*) "DP2C2",IPRN,DP2C2(IPRN),'==>',
+     &               C2A(IPRN,1)-C2B(IPRN,1)
+          DP2C2(IPRN)=C2A(IPRN,1)-C2B(IPRN,1)
+         ENDIF
+        ENDIF
+        IF(L1A(IPRN,2)+L2A(IPRN,2).GE.0.D0 ) THEN
+         IPHBIAS=1
+         IF(IPC.GE.2)
+     &   write(*,*) "PRDC9",IPRN,PRDC(9,IPRN),'==>',
+     &                -1.D-9*(L1A(IPRN,1)*F1-L2A(IPRN,1)*F2
+     &                -(C1A(IPRN,1)*F1
+     &                +C2A(IPRN,1)*F2)*(F1-F2)/(F1+F2))*AL4
+         IF(IPC.GE.2)
+     &   write(*,*) "PRDC10",IPRN,PRDC(10,IPRN),'==>',
+     &                 -0.299792D0*(L1A(IPRN,1)*F2ION
+     &                              -L2A(IPRN,1)*F1ION)         
+C WL(M)
+         PRDC(9,IPRN)=-1.D-9*(L1A(IPRN,1)*F1-L2A(IPRN,1)*F2
+     &                -(C1A(IPRN,1)*F1
+     &                +C2A(IPRN,1)*F2)*(F1-F2)/(F1+F2))*AL4
+C NL(M)
+         PRDC(10,IPRN)=-0.299792D0*(L1A(IPRN,1)*F2ION
+     &                              -L2A(IPRN,1)*F1ION)         
+        ENDIF
+c 2020May12 : new code bias general input
+c 2020Aug29 : extending to differential biases
 C GPS      ** WARNING*** C1W,C2W may be zeros in some bia files !
-        IF(IPRN.LE.32) THEN
+c       IF(IPRN.LE.32) THEN
 c 2020May12 : new code bias general input
 c        IF(C1W(IPRN)*C2W(IPRN).NE.0.D0) DP1P2(IPRN)=C1W(IPRN)-C2W(IPRN)
 c        IF(C1C(IPRN).NE.0.D0) DP1C1(IPRN)=C1W(IPRN)-C1C(IPRN)
@@ -34315,32 +35365,53 @@ c         PRDC(9,IPRN)=-1.D-9*(L1W(IPRN)*F1-L2W(IPRN)*F2-(C1W(IPRN)*F1
 c    &                 +C2W(IPRN)*F2)*(F1-F2)/(F1+F2))*AL4
 c NL(M)
 c         PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN)*F2ION-L2W(IPRN)*F1ION)         
-         IF(C1W(IPRN,2)+C2W(IPRN,2).GE.0.D0.OR.
-     &      C1W(IPRN,2)+C1C(IPRN,2).GE.0.D0.OR.
-     &      C2W(IPRN,2)+C2C(IPRN,2).GE.0.D0) THEN
-          ICDBIAS=1
-          IF(C1W(IPRN,2)+C2W(IPRN,2).GE.0.D0.AND.
-     &       DABS(C1W(IPRN,1)-C2W(IPRN,1)).GT.1.D-5)
-     &     DP1P2(IPRN)=C1W(IPRN,1)-C2W(IPRN,1)
-          IF(C1W(IPRN,2)+C1C(IPRN,2).GE.0.D0)
-     &     DP1C1(IPRN)=C1W(IPRN,1)-C1C(IPRN,1)
-          IF(C2W(IPRN,2)+C2C(IPRN,2).GE.0.D0)
-     &     DP2C2(IPRN)=C2W(IPRN,1)-C2C(IPRN,1)
-         ENDIF
-         IF(L1W(IPRN,2)+L2W(IPRN,2).GE.0.D0 ) THEN
-          IPHBIAS=1
-C WL(M)
-          PRDC(9,IPRN)=-1.D-9*(L1W(IPRN,1)*F1-L2W(IPRN,1)*F2
-     &                 -(C1W(IPRN,1)*F1
-     &                 +C2W(IPRN,1)*F2)*(F1-F2)/(F1+F2))*AL4
-C NL(M)
-          PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN,1)*F2ION
-     &                               -L2W(IPRN,1)*F1ION)         
+c        IF(C1W(IPRN,2)+C2W(IPRN,2).GE.0.D0.OR.
+c    &      C1W(IPRN,2)+C1C(IPRN,2).GE.0.D0.OR.
+c    &      C2W(IPRN,2)+C2C(IPRN,2).GE.0.D0) THEN
+c         ICDBIAS=1
+c         IF(C1W(IPRN,2)+C2W(IPRN,2).GE.0.D0.AND.
+c    &       DABS(C1W(IPRN,1)-C2W(IPRN,1)).GT.1.D-5) THEN
+c          IF(IPC.GE.2)
+c    &     write(*,*) "DP1P2",IPRN,DP1P2(IPRN),'==>',
+c    &                C1W(IPRN,1)-C2W(IPRN,1)
+c          DP1P2(IPRN)=C1W(IPRN,1)-C2W(IPRN,1)
+c         ENDIF
+c         IF(C1W(IPRN,2)+C1C(IPRN,2).GE.0.D0) THEN
+c          IF(IPC.GE.2)
+c    &     write(*,*) "DP1C1",IPRN,DP1C1(IPRN),'==>',
+c    &                C1W(IPRN,1)-C1C(IPRN,1)
+c          DP1C1(IPRN)=C1W(IPRN,1)-C1C(IPRN,1)
+c         ENDIF
+c         IF(C2W(IPRN,2)+C2C(IPRN,2).GE.0.D0) THEN
+c          IF(IPC.GE.2)
+c    &     write(*,*) "DP2C2",IPRN,DP2C2(IPRN),'==>',
+c    &                C2W(IPRN,1)-C2C(IPRN,1)
+c          DP2C2(IPRN)=C2W(IPRN,1)-C2C(IPRN,1)
+c         ENDIF
+c        ENDIF
+c        IF(L1W(IPRN,2)+L2W(IPRN,2).GE.0.D0 ) THEN
+c         IPHBIAS=1
+c         IF(IPC.GE.2)
+c    &    write(*,*) "PRDC9",IPRN,PRDC(9,IPRN),'==>',
+c    &                 -1.D-9*(L1W(IPRN,1)*F1-L2W(IPRN,1)*F2
+c    &                 -(C1W(IPRN,1)*F1
+c    &                 +C2W(IPRN,1)*F2)*(F1-F2)/(F1+F2))*AL4
+c         IF(IPC.GE.2)
+c    &    write(*,*) "PRDC10",IPRN,PRDC(10,IPRN),'==>',
+c    &                  -0.299792D0*(L1W(IPRN,1)*F2ION
+c    &                               -L2W(IPRN,1)*F1ION)         
+c WL(M)
+c         PRDC(9,IPRN)=-1.D-9*(L1W(IPRN,1)*F1-L2W(IPRN,1)*F2
+c    &                 -(C1W(IPRN,1)*F1
+c    &                 +C2W(IPRN,1)*F2)*(F1-F2)/(F1+F2))*AL4
+c NL(M)
+c         PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN,1)*F2ION
+c    &                               -L2W(IPRN,1)*F1ION)         
 c 2020May12 : new code bias general input
-         ENDIF
-        ENDIF
+c        ENDIF
+c       ENDIF
 C GLONASS
-        IF(IPRN.GT.32.AND.IPRN.LE.64) THEN
+c       IF(IPRN.GT.32.AND.IPRN.LE.64) THEN
 c 2020May12 : new code bias general input
 c        IF(C1P(IPRN)*C2P(IPRN).NE.0.D0) DP1P2(IPRN)=C1P(IPRN)-C2P(IPRN)
 c        IF(C1P(IPRN)*C1C(IPRN).NE.0.D0) DP1C1(IPRN)=C1P(IPRN)-C1C(IPRN)
@@ -34351,32 +35422,44 @@ c         PRDC(9,IPRN)=-1.D-9*(L1W(IPRN)*F1-L2W(IPRN)*F2-(C1P(IPRN)*F1
 c    &                 +C2P(IPRN)*F2)*(F1-F2)/(F1+F2)) *AL4
 c NL (M)
 c         PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN)*F2ION-L2W(IPRN)*F1ION)         
-         IF(C1P(IPRN,2)+C2P(IPRN,2).GE.0.D0.OR.
-     &      C1P(IPRN,2)+C1C(IPRN,2).GE.0.D0.OR.
-     &      C2P(IPRN,2)+C2C(IPRN,2).GE.0.D0) THEN
-          ICDBIAS=1
-          IF(C1P(IPRN,2)+C2P(IPRN,2).GE.0.D0.AND.
-     &       DABS(C1P(IPRN,1)-C2P(IPRN,1)).GT.1.D-5)
-     &     DP1P2(IPRN)=C1P(IPRN,1)-C2P(IPRN,1)
-          IF(C1P(IPRN,2)+C1C(IPRN,2).GE.0.D0)
-     &     DP1C1(IPRN)=C1P(IPRN,1)-C1C(IPRN,1)
-          IF(C2P(IPRN,2)+C2C(IPRN,2).GE.0.D0)
-     &     DP2C2(IPRN)=C2P(IPRN,1)-C2C(IPRN,1)
-         ENDIF
-         IF(L1W(IPRN,2)+L2W(IPRN,2).GE.0.D0) THEN
-          IPHBIAS=1
-C WL (M)
-          PRDC(9,IPRN)=-1.D-9*(L1W(IPRN,1)*F1-L2W(IPRN,1)*F2
-     &                 -(C1P(IPRN,1)*F1
-     &                 +C2P(IPRN,1)*F2)*(F1-F2)/(F1+F2)) *AL4
-C NL (M)
-          PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN,1)*F2ION
-     &                               -L2W(IPRN,1)*F1ION)         
+c        IF(C1P(IPRN,2)+C2P(IPRN,2).GE.0.D0.OR.
+c    &      C1P(IPRN,2)+C1C(IPRN,2).GE.0.D0.OR.
+c    &      C2P(IPRN,2)+C2C(IPRN,2).GE.0.D0) THEN
+c         ICDBIAS=1
+c         IF(C1P(IPRN,2)+C2P(IPRN,2).GE.0.D0.AND.
+c    &       DABS(C1P(IPRN,1)-C2P(IPRN,1)).GT.1.D-5) THEN
+c          IF(IPC.GE.2)
+c    &     write(*,*) "DP1P2",IPRN,DP1P2(IPRN),'==>',
+c    &                C1P(IPRN,1)-C2P(IPRN,1)
+c          DP1P2(IPRN)=C1P(IPRN,1)-C2P(IPRN,1)
+c         ENDIF
+c         IF(C1P(IPRN,2)+C1C(IPRN,2).GE.0.D0) THEN
+c          IF(IPC.GE.2)
+c    &     write(*,*) "DP1C1",IPRN,DP1C1(IPRN),'==>',
+c    &                C1P(IPRN,1)-C1C(IPRN,1)
+c          DP1C1(IPRN)=C1P(IPRN,1)-C1C(IPRN,1)
+c         ENDIF
+c         IF(C2P(IPRN,2)+C2C(IPRN,2).GE.0.D0) THEN
+c          IF(IPC.GE.2)
+c    &     write(*,*) "DP2C2",IPRN,DP2C2(IPRN),'==>',
+c    &                C2P(IPRN,1)-C2C(IPRN,1)
+c          DP2C2(IPRN)=C2P(IPRN,1)-C2C(IPRN,1)
+c         ENDIF
+c        ENDIF
+c        IF(L1W(IPRN,2)+L2W(IPRN,2).GE.0.D0) THEN
+c         IPHBIAS=1
+c WL (M)
+c         PRDC(9,IPRN)=-1.D-9*(L1W(IPRN,1)*F1-L2W(IPRN,1)*F2
+c    &                 -(C1P(IPRN,1)*F1
+c    &                 +C2P(IPRN,1)*F2)*(F1-F2)/(F1+F2)) *AL4
+c NL (M)
+c         PRDC(10,IPRN)=-0.299792D0*(L1W(IPRN,1)*F2ION
+c    &                               -L2W(IPRN,1)*F1ION)         
 c 2020May12 : new code bias general input
-         ENDIF
-        ENDIF
-C GALILEO  ** WARNING*** C1C,C5Q may be zeros in some bia files !
-        IF(IPRN.GT.64.AND.IPRN.LE.100) THEN
+c        ENDIF
+c       ENDIF
+c GALILEO  ** WARNING*** C1C,C5Q may be zeros in some bia files !
+c       IF(IPRN.GT.64.AND.IPRN.LE.100) THEN
 c 2020May12 : new code bias general input
 c        IF(C1C(IPRN)*C5Q(IPRN).NE.0.D0) DP1P2(IPRN)=C1C(IPRN)-C5Q(IPRN)
 c        IF(C1X(IPRN).NE.0.D0) DP1C1(IPRN)=C1C(IPRN)-C1X(IPRN)
@@ -34387,30 +35470,51 @@ c         PRDC(9,IPRN)=-1.D-9*(L1C(IPRN)*F1-L5Q(IPRN)*F2-(C1C(IPRN)*F1
 c    &                 +C5Q(IPRN)*F2)*(F1-F2)/(F1+F2)) *AL4
 c NL(M)
 c         PRDC(10,IPRN)=-0.299792D0*(L1C(IPRN)*F2ION-L5Q(IPRN)*F1ION)         
-         IF(C1C(IPRN,2)+C5Q(IPRN,2).GE.0.D0.OR.
-     &      C1X(IPRN,2)+C1C(IPRN,2).GE.0.D0.OR.
-     &      C5X(IPRN,2)+C5Q(IPRN,2).GE.0.D0) THEN
-          ICDBIAS=1
-          IF(C1C(IPRN,2)+C5Q(IPRN,2).GE.0.D0.AND.
-     &       DABS(C1C(IPRN,1)-C5Q(IPRN,1)).GT.1.D-5)
-     &     DP1P2(IPRN)=C1C(IPRN,1)-C5Q(IPRN,1)
-          IF(C1X(IPRN,2)+C1C(IPRN,2).GE.0.D0)
-     &     DP1C1(IPRN)=C1C(IPRN,1)-C1X(IPRN,1)
-          IF(C5X(IPRN,2)+C5Q(IPRN,2).GE.0.D0)
-     &     DP2C2(IPRN)=C5Q(IPRN,1)-C5X(IPRN,1)
-         ENDIF
-         IF(L1C(IPRN,2)+L5Q(IPRN,2).GE.0.D0) THEN
-          IPHBIAS=1
+c        IF(C1C(IPRN,2)+C5Q(IPRN,2).GE.0.D0.OR.
+c    &      C1C(IPRN,2)+C1X(IPRN,2).GE.0.D0.OR.
+c    &      C5Q(IPRN,2)+C5X(IPRN,2).GE.0.D0) THEN
+c         ICDBIAS=1
+c         IF(C1C(IPRN,2)+C5Q(IPRN,2).GE.0.D0.AND.
+c    &       DABS(C1C(IPRN,1)-C5Q(IPRN,1)).GT.1.D-5) THEN
+c          IF(IPC.GE.2)
+c    &     write(*,*) "DP1P2",IPRN,DP1P2(IPRN),'==>',
+c    &                C1C(IPRN,1)-C5Q(IPRN,1)
+c          DP1P2(IPRN)=C1C(IPRN,1)-C5Q(IPRN,1)
+c         ENDIF
+c         IF(C1C(IPRN,2)+C1X(IPRN,2).GE.0.D0) THEN
+c          IF(IPC.GE.2)
+c    &     write(*,*) "DP1C1",IPRN,DP1C1(IPRN),'==>',
+c    &                C1C(IPRN,1)-C1X(IPRN,1)
+c          DP1C1(IPRN)=C1C(IPRN,1)-C1X(IPRN,1)
+c         ENDIF
+c         IF(C5Q(IPRN,2)+C5X(IPRN,2).GE.0.D0) THEN
+c          IF(IPC.GE.2)
+c    &     write(*,*) "DP2C2",IPRN,DP2C2(IPRN),'==>',
+c    &                C5Q(IPRN,1)-C5X(IPRN,1)
+c          DP2C2(IPRN)=C5Q(IPRN,1)-C5X(IPRN,1)
+c         ENDIF
+c        ENDIF
+c        IF(L1C(IPRN,2)+L5Q(IPRN,2).GE.0.D0) THEN
+c         IPHBIAS=1
+c         IF(IPC.GE.2)
+c    &    write(*,*) "PRDC9",IPRN,PRDC(9,IPRN),'==>',
+c    &                 -1.D-9*(L1W(IPRN,1)*F1-L5Q(IPRN,1)*F2
+c    &                 -(C1C(IPRN,1)*F1
+c    &                 +C5Q(IPRN,1)*F2)*(F1-F2)/(F1+F2))*AL4
+c         IF(IPC.GE.2)
+c    &    write(*,*) "PRDC10",IPRN,PRDC(10,IPRN),'==>',
+c    &                  -0.299792D0*(L1C(IPRN,1)*F2ION
+c    &                               -L5Q(IPRN,1)*F1ION)         
 c 2020May12 : new code bias general input
-C WL(M)
-          PRDC(9,IPRN)=-1.D-9*(L1C(IPRN,1)*F1-L5Q(IPRN,1)*F2
-     &                 -(C1C(IPRN,1)*F1
-     &                 +C5Q(IPRN,1)*F2)*(F1-F2)/(F1+F2)) *AL4
-C NL(M)
-          PRDC(10,IPRN)=-0.299792D0*(L1C(IPRN,1)*F2ION
-     &                               -L5Q(IPRN,1)*F1ION)         
-         ENDIF
-        ENDIF
+c WL(M)
+c         PRDC(9,IPRN)=-1.D-9*(L1C(IPRN,1)*F1-L5Q(IPRN,1)*F2
+c    &                 -(C1C(IPRN,1)*F1
+c    &                 +C5Q(IPRN,1)*F2)*(F1-F2)/(F1+F2)) *AL4
+c NL(M)
+c         PRDC(10,IPRN)=-0.299792D0*(L1C(IPRN,1)*F2ION
+c    &                               -L5Q(IPRN,1)*F1ION)         
+c        ENDIF
+c       ENDIF
 C
         IF(IPC.GE.3)
      &  write(*,*)'IPRN DP12, DP1C1, DP2C2, WL, NL',IPRN, DP1P2(IPRN),
@@ -34418,12 +35522,22 @@ C
        ENDIF
       ENDDO
       GO TO 10
-20    write(*,*) 'READ ERROR IN BIA FILE! ' , NAMBIA
+c 2020Aug29 : extending to differential biases
+c0    write(*,*) 'READ ERROR IN BIA FILE! ' , NAMBIA
+20    write(*,*) 'READ ERROR IN BIA FILE! ' , NAMBIA, BIASTYPE
+c 2020Aug29 : extending to differential biases
 c 2020May12 : new code bias general input
       IERR=2
 c 2020May12 : new code bias general input
 10    CLOSE(LU)
-50    RETURN
+c 2020Aug29 : extending to differential biases
+c0    RETURN
+50    CONTINUE
+c===========
+c     IPC=JPC
+c===========
+      RETURN
+c 2020Aug29 : extending to differential biases
       END
 C Mar 23, 2020 -end
 C Mar 30, 2020 -start
